@@ -1,0 +1,468 @@
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Filament\Resources\LessonResource\Pages;
+use App\Filament\Resources\LessonResource\RelationManagers;
+use App\Models\Lesson;
+use App\Models\Video;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Storage;
+
+class LessonResource extends Resource
+{
+    protected static ?string $model = Lesson::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-play-circle';
+    
+    protected static ?string $navigationGroup = 'คอร์สเรียน';
+    
+    protected static ?int $navigationSort = 2;
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\Section::make('Lesson Information')
+                    ->schema([
+                        Forms\Components\Select::make('course_id')
+                            ->label('Course')
+                            ->relationship('course', 'title')
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('title')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\Textarea::make('description'),
+                                Forms\Components\TextInput::make('price')
+                                    ->numeric()
+                                    ->prefix('฿')
+                                    ->default(0),
+                            ])
+                            ->helperText('Select a course or create a new one'),
+                        Forms\Components\TextInput::make('title')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\Textarea::make('description')
+                            ->columnSpanFull(),
+                        Forms\Components\TextInput::make('duration_minutes')
+                            ->label('Duration (minutes)')
+                            ->required()
+                            ->numeric()
+                            ->minValue(1)
+                            ->default(15)
+                            ->helperText('Lesson duration in minutes'),
+                        Forms\Components\TextInput::make('order_index')
+                            ->label('Lesson Order')
+                            ->numeric()
+                            ->minValue(1)
+                            ->helperText('Order of this lesson in the course (auto-calculated if empty)')
+                            ->default(function (Forms\Get $get) {
+                                $courseId = $get('course_id');
+                                if ($courseId) {
+                                    return \App\Models\Lesson::where('course_id', $courseId)->max('order_index') + 1;
+                                }
+                                return 1;
+                            }),
+                        Forms\Components\Toggle::make('is_free')
+                            ->label('Free Preview')
+                            ->helperText('Allow users to preview this lesson for free'),
+                    ])->columns(2),
+                    
+                Forms\Components\Section::make('Video Content')
+                    ->schema([
+                        Forms\Components\FileUpload::make('video_upload')
+                            ->label('Upload Video')
+                            ->disk('local')
+                            ->directory('temp-videos')
+                            ->visibility('private')
+                            ->acceptedFileTypes(['video/mp4', 'video/mov', 'video/avi', 'video/webm'])
+                            ->maxSize(512000) // 500MB in KB for Railway
+                            ->preserveFilenames()
+                            ->downloadable()
+                            ->previewable(false)
+                            ->helperText('Max file size: 500MB. Supported formats: MP4, MOV, AVI, WebM')
+                            ->afterStateUpdated(function ($state, $set, $get, $record) {
+                                \Log::info('FileUpload afterStateUpdated called', [
+                                    'state' => $state,
+                                    'record_id' => $record?->id
+                                ]);
+                                
+                                if ($state && $record) {
+                                    try {
+                                        // Process video upload immediately when file is uploaded
+                                        $filePath = is_array($state) ? $state[0] : $state;
+                                        
+                                        if ($filePath) {
+                                            \Log::info('Processing video upload in afterStateUpdated', [
+                                                'file_path' => $filePath
+                                            ]);
+                                            
+                                            // Check if file exists
+                                            $fullPath = storage_path('app/' . $filePath);
+                                            if (file_exists($fullPath)) {
+                                                // Check for existing video
+                                                $existingVideo = $record->primaryVideo;
+                                                if ($existingVideo) {
+                                                    $existingVideo->update(['status' => 'replaced']);
+                                                }
+                                                
+                                                // Create video record
+                                                $video = \App\Models\Video::create([
+                                                    'title' => $record->title . ' - Video',
+                                                    'lesson_id' => $record->id,
+                                                    'original_filename' => basename($filePath),
+                                                    'original_path' => $filePath,
+                                                    'mime_type' => mime_content_type($fullPath),
+                                                    'file_size' => filesize($fullPath),
+                                                    'status' => 'pending',
+                                                    'metadata' => [
+                                                        'uploaded_by' => auth()->id(),
+                                                        'uploaded_at' => now()->toISOString(),
+                                                    ]
+                                                ]);
+                                                
+                                                // Queue processing
+                                                \App\Jobs\ProcessVideoJob::dispatch($video);
+                                                
+                                                \Log::info('Video created successfully', [
+                                                    'video_id' => $video->id
+                                                ]);
+                                                
+                                                // Update status display
+                                                $set('video_status', 'processing');
+                                            } else {
+                                                \Log::error('Video file not found', ['path' => $fullPath]);
+                                            }
+                                        }
+                                    } catch (\Exception $e) {
+                                        \Log::error('Error in afterStateUpdated', [
+                                            'error' => $e->getMessage(),
+                                            'trace' => $e->getTraceAsString()
+                                        ]);
+                                    }
+                                }
+                            })
+                            ->live()
+                            ->dehydrated(false),
+                            
+                        Forms\Components\TextInput::make('video_url')
+                            ->label('External Video URL (Optional)')
+                            ->url()
+                            ->maxLength(500)
+                            ->helperText('YouTube, Vimeo, or other video URL'),
+                            
+                        Forms\Components\Placeholder::make('video_status')
+                            ->label('Video Processing Status')
+                            ->content(function ($record) {
+                                if (!$record) return 'No video uploaded';
+                                
+                                $video = $record->primaryVideo;
+                                if (!$video) return 'No video uploaded';
+                                
+                                $statusColors = [
+                                    'pending' => 'text-yellow-600',
+                                    'processing' => 'text-blue-600',
+                                    'ready' => 'text-green-600',
+                                    'failed' => 'text-red-600',
+                                ];
+                                
+                                $color = $statusColors[$video->status] ?? 'text-gray-600';
+                                $status = ucfirst($video->status);
+                                
+                                return new \Illuminate\Support\HtmlString(
+                                    "<span class='{$color} font-semibold'>{$status}</span>"
+                                );
+                            })
+                            ->visible(fn ($record) => $record && $record->primaryVideo),
+                            
+                        Forms\Components\Placeholder::make('video_info')
+                            ->label('Video Information')
+                            ->content(function ($record) {
+                                if (!$record || !$record->primaryVideo) return '-';
+                                
+                                $video = $record->primaryVideo;
+                                $info = [];
+                                
+                                if ($video->duration_seconds) {
+                                    $info[] = "Duration: {$video->formatted_duration}";
+                                }
+                                
+                                if ($video->file_size) {
+                                    $info[] = "Size: {$video->formatted_size}";
+                                }
+                                
+                                if ($video->processing_error) {
+                                    $info[] = "<span class='text-red-600'>Error: {$video->processing_error}</span>";
+                                }
+                                
+                                return new \Illuminate\Support\HtmlString(
+                                    implode('<br>', $info)
+                                );
+                            })
+                            ->visible(fn ($record) => $record && $record->primaryVideo),
+                    ])->columns(1),
+            ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('course.title')
+                    ->label('Course')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->color('info'),
+                Tables\Columns\TextColumn::make('order_index')
+                    ->label('Order')
+                    ->sortable()
+                    ->alignCenter()
+                    ->badge()
+                    ->color('primary'),
+                Tables\Columns\TextColumn::make('title')
+                    ->label('Lesson Title')
+                    ->searchable()
+                    ->sortable()
+                    ->wrap()
+                    ->description(fn ($record) => $record->description ? \Str::limit($record->description, 50) : null),
+                Tables\Columns\TextColumn::make('duration_minutes')
+                    ->label('Duration')
+                    ->formatStateUsing(fn ($state) => $state . ' min')
+                    ->alignCenter()
+                    ->sortable(),
+                Tables\Columns\IconColumn::make('is_free')
+                    ->label('Free Preview')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-eye')
+                    ->falseIcon('heroicon-o-lock-closed')
+                    ->trueColor('success')
+                    ->falseColor('warning'),
+                Tables\Columns\TextColumn::make('video_status')
+                    ->label('Video Status')
+                    ->getStateUsing(function ($record) {
+                        if ($record->video_url) return 'External URL';
+                        if ($record->primaryVideo) {
+                            return match($record->primaryVideo->status) {
+                                'completed' => 'Ready',
+                                'processing' => 'Processing',
+                                'failed' => 'Failed',
+                                default => 'Pending'
+                            };
+                        }
+                        return 'No Video';
+                    })
+                    ->badge()
+                    ->color(function ($state) {
+                        return match($state) {
+                            'Ready', 'External URL' => 'success',
+                            'Processing' => 'warning',
+                            'Failed' => 'danger',
+                            default => 'gray'
+                        };
+                    }),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Created')
+                    ->dateTime('d/m/Y')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('course_id')
+                    ->label('Course')
+                    ->relationship('course', 'title')
+                    ->searchable()
+                    ->preload(),
+                Tables\Filters\TernaryFilter::make('is_free')
+                    ->label('Free Preview'),
+                Tables\Filters\SelectFilter::make('video_status')
+                    ->label('Video Status')
+                    ->options([
+                        'has_video' => 'Has Video',
+                        'no_video' => 'No Video',
+                        'external_url' => 'External URL',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['value'] === 'has_video',
+                            fn (Builder $query): Builder => $query->whereHas('videos'),
+                        )
+                        ->when(
+                            $data['value'] === 'no_video',
+                            fn (Builder $query): Builder => $query->whereDoesntHave('videos')->whereNull('video_url'),
+                        )
+                        ->when(
+                            $data['value'] === 'external_url',
+                            fn (Builder $query): Builder => $query->whereNotNull('video_url'),
+                        );
+                    }),
+            ])
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('upload_video')
+                    ->label('Upload Video')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('success')
+                    ->form([
+                        Forms\Components\FileUpload::make('video_file')
+                            ->label('Select Video File')
+                            ->disk('local')
+                            ->directory('temp-videos')
+                            ->visibility('private')
+                            ->acceptedFileTypes(['video/mp4', 'video/mov', 'video/avi', 'video/webm'])
+                            ->maxSize(512000) // 500MB
+                            ->required()
+                            ->preserveFilenames()
+                            ->helperText('Max 500MB. MP4, MOV, AVI, WebM supported')
+                    ])
+                    ->action(function ($record, array $data) {
+                        try {
+                            \Log::info('Manual video upload action', [
+                                'lesson_id' => $record->id,
+                                'data' => $data
+                            ]);
+                            
+                            $filePath = $data['video_file'];
+                            if (!$filePath) {
+                                throw new \Exception('No video file uploaded');
+                            }
+                            
+                            // Handle array of files
+                            if (is_array($filePath)) {
+                                $filePath = $filePath[0] ?? null;
+                            }
+                            
+                            if (!$filePath) {
+                                throw new \Exception('No video file in upload data');
+                            }
+                            
+                            \Log::info('Checking video file paths', [
+                                'relative_path' => $filePath,
+                                'storage_path' => storage_path('app/' . $filePath),
+                                'storage_private_path' => storage_path('app/private/' . $filePath),
+                            ]);
+                            
+                            // Try different path combinations
+                            $possiblePaths = [
+                                storage_path('app/' . $filePath),
+                                storage_path('app/private/' . $filePath),
+                                storage_path('app/public/' . $filePath),
+                                '/app/storage/app/' . $filePath,
+                                '/app/storage/app/private/' . $filePath,
+                            ];
+                            
+                            $fullPath = null;
+                            foreach ($possiblePaths as $path) {
+                                if (file_exists($path)) {
+                                    $fullPath = $path;
+                                    \Log::info('Found file at: ' . $path);
+                                    break;
+                                }
+                            }
+                            
+                            if (!$fullPath) {
+                                // Log what files actually exist in temp-videos directory
+                                $tempDir = storage_path('app/temp-videos');
+                                $privateDir = storage_path('app/private/temp-videos');
+                                $files = [];
+                                
+                                if (is_dir($tempDir)) {
+                                    $files['app/temp-videos'] = scandir($tempDir);
+                                }
+                                if (is_dir($privateDir)) {
+                                    $files['app/private/temp-videos'] = scandir($privateDir);
+                                }
+                                
+                                \Log::error('Video file not found', [
+                                    'tried_paths' => $possiblePaths,
+                                    'existing_files' => $files
+                                ]);
+                                
+                                throw new \Exception('Video file not found after checking all paths');
+                            }
+                            
+                            // Check for existing video
+                            $existingVideo = $record->primaryVideo;
+                            if ($existingVideo) {
+                                $existingVideo->update(['status' => 'replaced']);
+                            }
+                            
+                            // Create video record
+                            $video = \App\Models\Video::create([
+                                'title' => $record->title . ' - Video',
+                                'lesson_id' => $record->id,
+                                'original_filename' => basename($filePath),
+                                'original_path' => $filePath,
+                                'mime_type' => mime_content_type($fullPath),
+                                'file_size' => filesize($fullPath),
+                                'status' => 'pending',
+                                'metadata' => [
+                                    'uploaded_by' => auth()->id(),
+                                    'uploaded_at' => now()->toISOString(),
+                                ]
+                            ]);
+                            
+                            // Queue processing
+                            \App\Jobs\ProcessVideoJob::dispatch($video);
+                            
+                            \Filament\Notifications\Notification::make()
+                                ->title('Video uploaded successfully')
+                                ->body('Video is being processed')
+                                ->success()
+                                ->send();
+                                
+                        } catch (\Exception $e) {
+                            \Log::error('Video upload error', [
+                                'error' => $e->getMessage()
+                            ]);
+                            
+                            \Filament\Notifications\Notification::make()
+                                ->title('Upload failed')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    })
+                    ->visible(fn ($record) => !$record->primaryVideo || $record->primaryVideo->status === 'failed'),
+                Tables\Actions\Action::make('reorder')
+                    ->label('Reorder')
+                    ->icon('heroicon-o-arrows-up-down')
+                    ->color('info')
+                    ->url(fn ($record) => static::getUrl('index') . '?course_id=' . $record->course_id)
+                    ->openUrlInNewTab(false),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
+            ])
+            ->defaultSort('course_id', 'asc')
+            ->defaultSort('order_index', 'asc');
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListLessons::route('/'),
+            'create' => Pages\CreateLesson::route('/create'),
+            'edit' => Pages\EditLesson::route('/{record}/edit'),
+        ];
+    }
+}
