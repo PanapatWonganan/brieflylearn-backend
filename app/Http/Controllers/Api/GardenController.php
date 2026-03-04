@@ -67,9 +67,8 @@ class GardenController extends Controller
             // สร้างสวนใหม่ถ้ายังไม่มี
             $garden = $user->getOrCreateGarden();
             
-            // โหลดข้อมูลพืชทั้งหมดในสวน - เพิ่ม where user_id เพื่อความแน่ใจ
+            // โหลดข้อมูลพืชทั้งหมดในสวน
             $plants = $garden->plants()
-                ->where('user_id', $user->id)
                 ->with('plantType')
                 ->orderBy('planted_at', 'desc')
                 ->get()
@@ -92,9 +91,8 @@ class GardenController extends Controller
                     ];
                 });
 
-            // กิจกรรมล่าสุด - เพิ่ม where user_id
+            // กิจกรรมล่าสุด
             $recentActivities = $garden->activities()
-                ->where('user_id', $user->id)
                 ->with('user')
                 ->recent(7)
                 ->take(10)
@@ -112,14 +110,14 @@ class GardenController extends Controller
                     ];
                 });
 
-            // สถิติของสวน - เพิ่ม where user_id ในการ query
+            // สถิติของสวน
             $stats = [
                 'total_plants' => $plants->count(),
                 'growing_plants' => $plants->where('is_fully_grown', false)->count(),
                 'mature_plants' => $plants->where('is_fully_grown', true)->count(),
                 'plants_need_water' => $plants->where('needs_watering', true)->count(),
-                'total_xp_today' => $garden->activities()->where('user_id', $user->id)->today()->sum('xp_earned'),
-                'total_activities_today' => $garden->activities()->where('user_id', $user->id)->today()->count()
+                'total_xp_today' => $garden->activities()->today()->sum('xp_earned'),
+                'total_activities_today' => $garden->activities()->today()->count()
             ];
 
             return response()->json([
@@ -334,6 +332,7 @@ class GardenController extends Controller
             if (!$user) {
                 return $this->authError();
             }
+            $garden = $user->getOrCreateGarden();
             $plant = UserPlant::where('user_id', $user->id)->find($userPlantId);
 
             if (!$plant) {
@@ -341,6 +340,14 @@ class GardenController extends Controller
                     'success' => false,
                     'message' => 'Plant not found'
                 ], 404);
+            }
+
+            // Validate plant belongs to user's garden
+            if ($plant->garden_id !== $garden->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
             }
 
             if (!$plant->needsWatering()) {
@@ -366,6 +373,13 @@ class GardenController extends Controller
             // ตรวจสอบว่าเติบโตหรือไม่
             $grewUp = $plant->stage > $oldStage;
 
+            // Add XP and star_seeds rewards to garden
+            $xpReward = 5;
+            $seedsReward = 2;
+            $garden->xp += $xpReward;
+            $garden->star_seeds += $seedsReward;
+            $garden->save();
+
             DB::commit();
 
             return response()->json([
@@ -385,8 +399,13 @@ class GardenController extends Controller
                     ],
                     'grew_up' => $grewUp,
                     'rewards' => [
-                        'xp' => 5,
-                        'star_seeds' => 2
+                        'xp' => $xpReward,
+                        'star_seeds' => $seedsReward
+                    ],
+                    'garden' => [
+                        'xp' => $garden->xp,
+                        'level' => $garden->level,
+                        'star_seeds' => $garden->star_seeds
                     ]
                 ]
             ]);
@@ -411,6 +430,7 @@ class GardenController extends Controller
             if (!$user) {
                 return $this->authError();
             }
+            $garden = $user->getOrCreateGarden();
             $plant = UserPlant::where('user_id', $user->id)->find($userPlantId);
 
             if (!$plant) {
@@ -418,6 +438,14 @@ class GardenController extends Controller
                     'success' => false,
                     'message' => 'Plant not found'
                 ], 404);
+            }
+
+            // Validate plant belongs to user's garden
+            if ($plant->garden_id !== $garden->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
             }
 
             if (!$plant->is_fully_grown) {
@@ -483,10 +511,12 @@ class GardenController extends Controller
             $garden = $user->getOrCreateGarden();
 
             if (!$garden->needsWatering()) {
+                $hoursLeft = 4 - $garden->last_watered_at->diffInHours(now());
                 return response()->json([
                     'success' => false,
-                    'message' => 'Garden does not need watering yet',
-                    'last_watered_at' => $garden->last_watered_at?->format('Y-m-d H:i:s')
+                    'message' => "Garden does not need watering yet. Try again in {$hoursLeft} hour(s).",
+                    'last_watered_at' => $garden->last_watered_at?->format('Y-m-d H:i:s'),
+                    'next_water_at' => $garden->last_watered_at?->addHours(4)->format('Y-m-d H:i:s')
                 ], 400);
             }
 
@@ -494,9 +524,8 @@ class GardenController extends Controller
 
             $garden->water();
 
-            // รดน้ำพืชทั้งหมดที่ต้องการน้ำ - เพิ่ม where user_id
+            // รดน้ำพืชทั้งหมดที่ต้องการน้ำ
             $plantsNeedingWater = $garden->plants()
-                ->where('user_id', $user->id)
                 ->needsWatering()
                 ->get();
             $wateredCount = 0;

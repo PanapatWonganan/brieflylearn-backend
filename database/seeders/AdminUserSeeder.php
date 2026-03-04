@@ -19,16 +19,16 @@ class AdminUserSeeder extends Seeder
         if (!$adminExists) {
             User::create([
                 'id' => (string) Str::uuid(),
-                'email' => 'admin@boostme.com',
+                'email' => 'admin@brieflylearn.com',
                 'password_hash' => bcrypt('admin123456'),
-                'full_name' => 'BoostMe Administrator',
+                'full_name' => 'BrieflyLearn Administrator',
                 'role' => 'admin',
                 'email_verified' => true,
                 'phone' => '0812345678',
             ]);
 
             $this->command->info('Admin user created successfully!');
-            $this->command->info('Email: admin@boostme.com');
+            $this->command->info('Email: admin@brieflylearn.com');
             $this->command->info('Password: admin123456');
         } else {
             $this->command->info('Admin user already exists!');

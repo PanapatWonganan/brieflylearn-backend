@@ -11,18 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Skip users table creation since it already exists
-        if (!Schema::hasTable('users')) {
-            Schema::create('users', function (Blueprint $table) {
-                $table->id();
-                $table->string('name');
-                $table->string('email')->unique();
-                $table->timestamp('email_verified_at')->nullable();
-                $table->string('password');
-                $table->rememberToken();
-                $table->timestamps();
-            });
-        }
+        Schema::create('users', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->string('email')->unique();
+            $table->string('password_hash');
+            $table->string('full_name')->nullable();
+            $table->string('avatar_url')->nullable();
+            $table->enum('role', ['admin', 'instructor', 'student'])->default('student');
+            $table->boolean('email_verified')->default(false);
+            $table->string('phone')->nullable();
+            $table->string('remember_token', 100)->nullable();
+            $table->timestamps();
+        });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
@@ -32,7 +32,7 @@ return new class extends Migration
 
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
-            $table->foreignId('user_id')->nullable()->index();
+            $table->uuid('user_id')->nullable()->index();
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
             $table->longText('payload');

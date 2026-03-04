@@ -103,7 +103,7 @@ class UserGarden extends Model
             return true;
         }
         
-        return $this->last_watered_at->diffInHours(now()) >= 24;
+        return $this->last_watered_at->diffInHours(now()) >= 4;
     }
 
     // รดน้ำสวน

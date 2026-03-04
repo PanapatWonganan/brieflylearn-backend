@@ -4,6 +4,9 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Category;
+use App\Models\User;
+use App\Models\Course;
 
 class CourseSeeder extends Seeder
 {
@@ -12,204 +15,187 @@ class CourseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Get admin user as default instructor
+        $instructor = User::where('role', 'admin')->first()
+            ?? User::first();
+
+        if (!$instructor) {
+            $this->command->error('No user found to assign as instructor. Run DatabaseSeeder first.');
+            return;
+        }
+
+        // Get categories by slug
+        $categories = Category::pluck('id', 'slug');
+
+        if ($categories->isEmpty()) {
+            $this->command->error('No categories found. Run CategorySeeder first.');
+            return;
+        }
+
         $courses = [
-            // Fitness Category
+            // AI พื้นฐาน
             [
-                'title' => 'โยคะสำหรับคุณแม่ตั้งครรภ์',
-                'description' => 'คอร์สโยคะเบื้องต้นที่ออกแบบมาเป็นพิเศษสำหรับคุณแม่ตั้งครรภ์ เพื่อเสริมสร้างความแข็งแรงและความยืดหยุ่นของร่างกาย',
+                'title' => 'AI 101: เริ่มต้นเข้าใจ AI ฉบับไม่ต้องเขียนโค้ด',
+                'description' => 'คอร์สพื้นฐานสำหรับทุกคนที่อยากเข้าใจ AI ตั้งแต่แนวคิด หลักการทำงาน ไปจนถึงการใช้งานจริงในชีวิตประจำวันและการทำงาน ไม่ต้องมีพื้นฐานโปรแกรมมิ่ง',
+                'price' => 1490,
+                'category_slug' => 'ai-fundamentals',
+                'thumbnail_url' => 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800',
+                'level' => 'beginner',
+                'duration' => 180,
+                'is_published' => true,
+            ],
+            [
+                'title' => 'ChatGPT & Claude Mastery',
+                'description' => 'เรียนรู้การใช้งาน ChatGPT และ Claude อย่างเต็มประสิทธิภาพ ตั้งแต่พื้นฐานจนถึงเทคนิคขั้นสูง เพื่อเพิ่มผลผลิตในการทำงานได้ทันที',
                 'price' => 1990,
-                'category_id' => 1, // Fitness
-                'instructor_name' => 'อ.สุภาพร วรรณชัย',
-                'thumbnail_url' => 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800',
+                'category_slug' => 'ai-fundamentals',
+                'thumbnail_url' => 'https://images.unsplash.com/photo-1655720828018-edd2daec9349?w=800',
                 'level' => 'beginner',
-                'duration_minutes' => 180,
+                'duration' => 200,
                 'is_published' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
-                'title' => 'Pilates สำหรับหลังคลอด',
-                'description' => 'คอร์ส Pilates ที่ช่วยฟื้นฟูร่างกายหลังคลอด เน้นการกระชับกล้ามเนื้อและฟื้นฟูแกนกลาง',
-                'price' => 2490,
-                'category_id' => 1, // Fitness
-                'instructor_name' => 'อ.ปาณิสรา จันทร์เพ็ญ',
-                'thumbnail_url' => 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800',
-                'level' => 'intermediate',
-                'duration_minutes' => 240,
-                'is_published' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'title' => 'Cardio สนุกสำหรับผู้หญิง',
-                'description' => 'ออกกำลังกาย Cardio สไตล์สนุกๆ เต้นตามจังหวะ เพื่อสุขภาพหัวใจและการเผาผลาญที่ดี',
-                'price' => 1590,
-                'category_id' => 1, // Fitness
-                'instructor_name' => 'อ.น้ำทิพย์ สุขสันต์',
-                'thumbnail_url' => 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800',
-                'level' => 'beginner',
-                'duration_minutes' => 150,
-                'is_published' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-
-            // Nutrition Category
-            [
-                'title' => 'โภชนาการสำหรับคุณแม่ตั้งครรภ์',
-                'description' => 'เรียนรู้การวางแผนอาหารที่เหมาะสมสำหรับคุณแม่ตั้งครรภ์ เพื่อสุขภาพของแม่และลูก',
-                'price' => 1790,
-                'category_id' => 2, // Nutrition
-                'instructor_name' => 'นักโภชนาการ ธันยวีร์ ปัญญาดี',
-                'thumbnail_url' => 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800',
-                'level' => 'beginner',
-                'duration_minutes' => 200,
-                'is_published' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'title' => 'อาหารเสริมนมแม่หลังคลอด',
-                'description' => 'สูตรอาหารและเมนูเด็ดสำหรับคุณแม่หลังคลอด ที่ช่วยเพิ่มคุณภาพและปริมาณน้ำนม',
-                'price' => 1590,
-                'category_id' => 2, // Nutrition
-                'instructor_name' => 'นักโภชนาการ วรรณา ศรีสุข',
-                'thumbnail_url' => 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800',
-                'level' => 'beginner',
-                'duration_minutes' => 180,
-                'is_published' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'title' => 'การกินเพื่อสมดุลฮอร์โมน',
-                'description' => 'เรียนรู้เกี่ยวกับอาหารที่ช่วยสมดุลฮอร์โมนในผู้หญิง ลดอาการ PMS และเมโนพอส',
-                'price' => 2190,
-                'category_id' => 2, // Nutrition
-                'instructor_name' => 'นักโภชนาการ สุดารัตน์ พัฒนสิน',
-                'thumbnail_url' => 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800',
-                'level' => 'intermediate',
-                'duration_minutes' => 250,
-                'is_published' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-
-            // Mental Health Category
-            [
-                'title' => 'สมาธิและการผ่อนคลายสำหรับคุณแม่ใหม่',
-                'description' => 'เทคนิคการทำสมาธิและผ่อนคลายเพื่อลดความเครียดหลังคลอด',
+                'title' => 'AI Tools รวมเครื่องมือ AI ที่ต้องรู้ในปี 2025',
+                'description' => 'สำรวจเครื่องมือ AI กว่า 30+ ตัวที่น่าสนใจ ทั้ง Text, Image, Video, Audio AI พร้อมวิธีเลือกใช้ให้เหมาะกับงาน',
                 'price' => 1290,
-                'category_id' => 3, // Mental Health
-                'instructor_name' => 'อ.ภัทรา มณีรัตน์',
-                'thumbnail_url' => 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800',
+                'category_slug' => 'ai-fundamentals',
+                'thumbnail_url' => 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800',
                 'level' => 'beginner',
-                'duration_minutes' => 120,
+                'duration' => 150,
                 'is_published' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'title' => 'จัดการอารมณ์และความเครียด',
-                'description' => 'เรียนรู้เทคนิคการจัดการอารมณ์และความเครียดสำหรับผู้หญิงยุคใหม่',
-                'price' => 1690,
-                'category_id' => 3, // Mental Health
-                'instructor_name' => 'นักจิตวิทยา ดร.ปรียาภรณ์ สุวรรณ',
-                'thumbnail_url' => 'https://images.unsplash.com/photo-1499209974431-9dddcece7f88?w=800',
-                'level' => 'intermediate',
-                'duration_minutes' => 200,
-                'is_published' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
 
-            // Personal Development Category
+            // AI สร้างธุรกิจ (Entrepreneur Track)
             [
-                'title' => 'การจัดการเวลาสำหรับคุณแม่วัยทำงาน',
-                'description' => 'เทคนิคการจัดการเวลาอย่างมีประสิทธิภาพเพื่อสมดุลระหว่างงานและครอบครัว',
-                'price' => 1990,
-                'category_id' => 4, // Personal Development
-                'instructor_name' => 'โค้ช วิภาวี ธีระกุล',
-                'thumbnail_url' => 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800',
+                'title' => 'สร้างธุรกิจออนไลน์ด้วย AI ใน 30 วัน',
+                'description' => 'คอร์สเข้มข้นสำหรับผู้ประกอบการ เรียนรู้การใช้ AI สร้างคอนเทนต์ ทำการตลาด สร้างเว็บไซต์ และขายสินค้าออนไลน์ ตั้งแต่เริ่มต้นจนมีรายได้',
+                'price' => 3990,
+                'category_slug' => 'ai-business',
+                'thumbnail_url' => 'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=800',
                 'level' => 'beginner',
-                'duration_minutes' => 180,
+                'duration' => 360,
                 'is_published' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
-                'title' => 'สร้างความมั่นใจและภาวะผู้นำ',
-                'description' => 'พัฒนาความมั่นใจในตัวเองและทักษะภาวะผู้นำสำหรับผู้หญิง',
+                'title' => 'AI Content Creator: สร้างคอนเทนต์ระดับโปร',
+                'description' => 'เทคนิคการใช้ AI สร้างคอนเทนต์คุณภาพ ทั้งบทความ วิดีโอสคริปต์ โพสต์โซเชียล กราฟิก และ Ads Copy ที่ขายได้จริง',
                 'price' => 2490,
-                'category_id' => 4, // Personal Development
-                'instructor_name' => 'โค้ช ชญานิศ กิจเจริญ',
-                'thumbnail_url' => 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800',
+                'category_slug' => 'ai-business',
+                'thumbnail_url' => 'https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=800',
                 'level' => 'intermediate',
-                'duration_minutes' => 240,
+                'duration' => 240,
                 'is_published' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
-
-            // Pregnancy Category
             [
-                'title' => 'เตรียมตัวตั้งครรภ์อย่างมีความสุข',
-                'description' => 'คอร์สเตรียมความพร้อมร่างกายและจิตใจสำหรับการตั้งครรภ์',
+                'title' => 'AI Marketing: การตลาดยุค AI',
+                'description' => 'วางแผนกลยุทธ์การตลาดด้วย AI ตั้งแต่วิเคราะห์ลูกค้า สร้าง Persona ทำ SEO ยิง Ads และวัดผลแคมเปญอย่างมีประสิทธิภาพ',
                 'price' => 2990,
-                'category_id' => 5, // Pregnancy
-                'instructor_name' => 'พญ.สุภาพร ประดิษฐ์',
-                'thumbnail_url' => 'https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=800',
-                'level' => 'beginner',
-                'duration_minutes' => 300,
+                'category_slug' => 'ai-business',
+                'thumbnail_url' => 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800',
+                'level' => 'intermediate',
+                'duration' => 280,
                 'is_published' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'title' => 'การดูแลตัวเองหลังคลอดแบบองค์รวม',
-                'description' => 'คู่มือการดูแลตัวเองหลังคลอดทั้งร่างกายและจิตใจ ตั้งแต่สัปดาห์แรกถึง 6 เดือน',
-                'price' => 2790,
-                'category_id' => 5, // Pregnancy
-                'instructor_name' => 'อ.ธิดารัตน์ วงศ์ชัย',
-                'thumbnail_url' => 'https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=800',
-                'level' => 'beginner',
-                'duration_minutes' => 280,
-                'is_published' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
 
-            // Hormonal Health Category
+            // AI บริหารองค์กร (Leader Track)
             [
-                'title' => 'ทำความรู้จักกับฮอร์โมนผู้หญิง',
-                'description' => 'เรียนรู้เกี่ยวกับฮอร์โมนผู้หญิง การทำงาน และวิธีดูแลให้สมดุล',
-                'price' => 1890,
-                'category_id' => 6, // Hormonal Health
-                'instructor_name' => 'พญ.ณัฐชา อิ่มสุข',
-                'thumbnail_url' => 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=800',
-                'level' => 'beginner',
-                'duration_minutes' => 220,
+                'title' => 'AI Transformation: นำ AI เข้าองค์กรอย่างเป็นระบบ',
+                'description' => 'คอร์สสำหรับผู้บริหารและ HR เรียนรู้กระบวนการนำ AI เข้าสู่องค์กร ตั้งแต่การประเมินความพร้อม วางแผน จนถึงการ Implement และวัดผล ROI',
+                'price' => 4990,
+                'category_slug' => 'ai-organization',
+                'thumbnail_url' => 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800',
+                'level' => 'advanced',
+                'duration' => 400,
                 'is_published' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
-                'title' => 'จัดการ PCOS และความไม่สมดุลของฮอร์โมน',
-                'description' => 'แนวทางการดูแลและจัดการ PCOS ด้วยวิธีธรรมชาติและการปรับไลฟ์สไตล์',
-                'price' => 2290,
-                'category_id' => 6, // Hormonal Health
-                'instructor_name' => 'พญ.รัตนา บุญมี',
-                'thumbnail_url' => 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800',
+                'title' => 'AI Leadership: ผู้นำยุค AI',
+                'description' => 'พัฒนาทักษะการเป็นผู้นำในยุค AI เรียนรู้วิธีบริหารทีมที่ทำงานร่วมกับ AI การตัดสินใจด้วยข้อมูล และการสร้างวัฒนธรรมองค์กรที่พร้อมรับ AI',
+                'price' => 3490,
+                'category_slug' => 'ai-organization',
+                'thumbnail_url' => 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800',
                 'level' => 'intermediate',
-                'duration_minutes' => 260,
+                'duration' => 300,
                 'is_published' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
+            ],
+
+            // Prompt Engineering
+            [
+                'title' => 'Prompt Engineering Masterclass',
+                'description' => 'เจาะลึกเทคนิคการเขียน Prompt ขั้นสูง ทั้ง Chain-of-Thought, Few-Shot, Role Prompting และ Framework ต่างๆ เพื่อผลลัพธ์ที่แม่นยำจาก AI',
+                'price' => 2490,
+                'category_slug' => 'prompt-engineering',
+                'thumbnail_url' => 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800',
+                'level' => 'intermediate',
+                'duration' => 220,
+                'is_published' => true,
+            ],
+            [
+                'title' => 'Prompt Templates สำหรับทุกสายงาน',
+                'description' => 'รวม Prompt Templates กว่า 100+ ชุด สำหรับงานการตลาด งานเขียน วิเคราะห์ข้อมูล HR การเงิน และอีกมากมาย พร้อมใช้ได้ทันที',
+                'price' => 1790,
+                'category_slug' => 'prompt-engineering',
+                'thumbnail_url' => 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800',
+                'level' => 'beginner',
+                'duration' => 160,
+                'is_published' => true,
+            ],
+
+            // AI Automation
+            [
+                'title' => 'AI Automation with Make & Zapier',
+                'description' => 'สร้างระบบอัตโนมัติด้วย AI ผ่าน Make (Integromat) และ Zapier เชื่อมต่อเครื่องมือกว่า 50+ แอป ลดงานซ้ำซ้อนได้กว่า 80%',
+                'price' => 2990,
+                'category_slug' => 'ai-automation',
+                'thumbnail_url' => 'https://images.unsplash.com/photo-1518432031352-d6fc5c10da5a?w=800',
+                'level' => 'intermediate',
+                'duration' => 280,
+                'is_published' => true,
+            ],
+            [
+                'title' => 'สร้าง AI Chatbot สำหรับธุรกิจ',
+                'description' => 'เรียนรู้การสร้าง AI Chatbot ตอบลูกค้าอัตโนมัติ ทั้งบน LINE, Facebook Messenger และเว็บไซต์ ไม่ต้องเขียนโค้ด',
+                'price' => 2490,
+                'category_slug' => 'ai-automation',
+                'thumbnail_url' => 'https://images.unsplash.com/photo-1531746790095-6c5c78131748?w=800',
+                'level' => 'beginner',
+                'duration' => 200,
+                'is_published' => true,
+            ],
+
+            // AI Strategy
+            [
+                'title' => 'AI Strategy Blueprint สำหรับ CEO',
+                'description' => 'วางแผนกลยุทธ์ AI ระดับองค์กร เรียนรู้จาก Case Study จริงของบริษัทชั้นนำ พร้อม Framework ที่นำไปใช้ได้ทันที',
+                'price' => 5990,
+                'category_slug' => 'ai-strategy',
+                'thumbnail_url' => 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800',
+                'level' => 'advanced',
+                'duration' => 360,
+                'is_published' => true,
+            ],
+            [
+                'title' => 'AI ROI: วัดผลตอบแทนจากการลงทุน AI',
+                'description' => 'เรียนรู้วิธีคำนวณ ROI จากโปรเจกต์ AI ตั้งแต่การตั้ง KPI วัดผล และนำเสนอผลลัพธ์ต่อผู้บริหาร พร้อม Template Excel',
+                'price' => 2990,
+                'category_slug' => 'ai-strategy',
+                'thumbnail_url' => 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800',
+                'level' => 'intermediate',
+                'duration' => 240,
+                'is_published' => true,
             ],
         ];
 
-        foreach ($courses as $course) {
-            \App\Models\Course::create($course);
+        foreach ($courses as $courseData) {
+            $slug = $courseData['category_slug'];
+            unset($courseData['category_slug']);
+
+            $courseData['instructor_id'] = $instructor->id;
+            $courseData['category_id'] = $categories[$slug] ?? null;
+
+            Course::create($courseData);
         }
+
+        $this->command->info('✅ Courses seeded successfully! (' . count($courses) . ' courses)');
     }
 }

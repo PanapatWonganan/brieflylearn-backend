@@ -12,7 +12,7 @@ class TestUsersSeeder extends Seeder
     {
         // Create admin user
         User::updateOrCreate(
-            ['email' => 'admin@exammaster.com'],
+            ['email' => 'admin@brieflylearn.com'],
             [
                 'full_name' => 'Admin User',
                 'password_hash' => Hash::make('password123'),
@@ -23,7 +23,7 @@ class TestUsersSeeder extends Seeder
 
         // Create regular user
         User::updateOrCreate(
-            ['email' => 'user@exammaster.com'],
+            ['email' => 'user@brieflylearn.com'],
             [
                 'full_name' => 'Test User',
                 'password_hash' => Hash::make('password123'),
@@ -33,7 +33,7 @@ class TestUsersSeeder extends Seeder
         );
 
         $this->command->info('Test users created successfully!');
-        $this->command->info('Admin: admin@exammaster.com / password123');
-        $this->command->info('User: user@exammaster.com / password123');
+        $this->command->info('Admin: admin@brieflylearn.com / password123');
+        $this->command->info('User: user@brieflylearn.com / password123');
     }
 }
