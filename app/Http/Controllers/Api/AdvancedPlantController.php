@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\UserGarden;
 use App\Models\UserPlant;
 use App\Models\PlantType;
-use App\Models\User;
 use App\Models\GardenActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,21 +15,27 @@ use Illuminate\Support\Facades\Validator;
 class AdvancedPlantController extends Controller
 {
     /**
-     * Get current user ID (for testing, use first user)
+     * Get current user ID from authenticated request
      */
-    private function getCurrentUserId(): string
+    private function getCurrentUserId(Request $request): ?string
     {
-        $user = User::first();
-        return $user ? $user->id : '0198b246-1b0e-7cd6-8f5e-8a0a5b787402';
+        $user = Auth::user() ?? $request->auth_user;
+        return $user ? $user->id : null;
     }
 
     /**
      * Get plant special abilities
      */
-    public function getPlantAbilities(string $plantId): JsonResponse
+    public function getPlantAbilities(Request $request, string $plantId): JsonResponse
     {
         try {
-            $userId = $this->getCurrentUserId();
+            $userId = $this->getCurrentUserId($request);
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
             $plant = UserPlant::where('id', $plantId)
                             ->where('user_id', $userId)
                             ->with('plantType')
@@ -85,7 +90,14 @@ class AdvancedPlantController extends Controller
                 ], 400);
             }
 
-            $userId = $this->getCurrentUserId();
+            $userId = $this->getCurrentUserId($request);
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
             $plant = UserPlant::where('id', $plantId)
                             ->where('user_id', $userId)
                             ->with('plantType')
@@ -169,7 +181,13 @@ class AdvancedPlantController extends Controller
     public function evolvePlant(Request $request, string $plantId): JsonResponse
     {
         try {
-            $userId = $this->getCurrentUserId();
+            $userId = $this->getCurrentUserId($request);
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
             $plant = UserPlant::where('id', $plantId)
                             ->where('user_id', $userId)
                             ->with('plantType')
@@ -236,7 +254,14 @@ class AdvancedPlantController extends Controller
                 ], 400);
             }
 
-            $userId = $this->getCurrentUserId();
+            $userId = $this->getCurrentUserId($request);
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
             $parent1 = UserPlant::where('id', $request->parent1_id)->where('user_id', $userId)->first();
             $parent2 = UserPlant::where('id', $request->parent2_id)->where('user_id', $userId)->first();
 

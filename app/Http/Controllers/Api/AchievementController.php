@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\AchievementEarnedMail;
 use App\Models\Achievement;
 use App\Models\UserAchievement;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AchievementController extends Controller
 {
@@ -16,17 +19,21 @@ class AchievementController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            // For testing - use demo user if no auth
-            $user = $request->user() ?? \App\Models\User::first();
-            
+            $user = $request->user();
+
+            if (!$user) {
+                return $this->authError();
+            }
+
+            // Pre-fetch all user achievements to avoid N+1 query
+            $userAchievements = $user->userAchievements()->get()->keyBy('achievement_id');
+
             $achievements = Achievement::active()
                 ->orderBy('category')
                 ->orderBy('sort_order')
                 ->get()
-                ->map(function($achievement) use ($user) {
-                    $userAchievement = $user->userAchievements()
-                        ->where('achievement_id', $achievement->id)
-                        ->first();
+                ->map(function($achievement) use ($userAchievements) {
+                    $userAchievement = $userAchievements->get($achievement->id);
 
                     return [
                         'id' => $achievement->id,
@@ -84,10 +91,10 @@ class AchievementController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to get achievements', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get achievements',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถดึงข้อมูลความสำเร็จได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -98,17 +105,21 @@ class AchievementController extends Controller
     public function getByCategory(Request $request, string $category): JsonResponse
     {
         try {
-            // For testing - use demo user if no auth
-            $user = $request->user() ?? \App\Models\User::first();
-            
+            $user = $request->user();
+
+            if (!$user) {
+                return $this->authError();
+            }
+
+            // Pre-fetch all user achievements to avoid N+1 query
+            $userAchievements = $user->userAchievements()->get()->keyBy('achievement_id');
+
             $achievements = Achievement::active()
                 ->byCategory($category)
                 ->orderBy('sort_order')
                 ->get()
-                ->map(function($achievement) use ($user) {
-                    $userAchievement = $user->userAchievements()
-                        ->where('achievement_id', $achievement->id)
-                        ->first();
+                ->map(function($achievement) use ($userAchievements) {
+                    $userAchievement = $userAchievements->get($achievement->id);
 
                     return [
                         'id' => $achievement->id,
@@ -133,10 +144,10 @@ class AchievementController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to get achievements by category', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get achievements by category',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถดึงข้อมูลความสำเร็จตามหมวดหมู่ได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -147,8 +158,12 @@ class AchievementController extends Controller
     public function checkAchievements(Request $request): JsonResponse
     {
         try {
-            // For testing - use demo user if no auth
-            $user = $request->user() ?? \App\Models\User::first();
+            $user = $request->user();
+
+            if (!$user) {
+                return $this->authError();
+            }
+
             $newAchievements = [];
 
             // ดึง achievements ที่ยังไม่ได้รับ
@@ -170,6 +185,18 @@ class AchievementController extends Controller
                             'star_seeds_reward' => $achievement->star_seeds_reward,
                             'earned_at' => $userAchievement->earned_at->format('Y-m-d H:i:s')
                         ];
+
+                        // Send achievement earned email (wrapped in try-catch)
+                        try {
+                            Mail::to($user->email)->send(new AchievementEarnedMail($user, $achievement));
+                        } catch (\Exception $e) {
+                            Log::warning('Failed to send achievement earned email', [
+                                'user_id' => $user->id,
+                                'achievement_id' => $achievement->id,
+                                'error' => $e->getMessage()
+                            ]);
+                            // Don't fail achievement awarding if email fails
+                        }
                     } catch (\Exception $e) {
                         // Achievement already earned, skip
                     }
@@ -188,10 +215,10 @@ class AchievementController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to check achievements', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to check achievements',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถตรวจสอบความสำเร็จได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -202,9 +229,12 @@ class AchievementController extends Controller
     public function getUserAchievements(Request $request): JsonResponse
     {
         try {
-            // For testing - use demo user if no auth
-            $user = $request->user() ?? \App\Models\User::first();
-            
+            $user = $request->user();
+
+            if (!$user) {
+                return $this->authError();
+            }
+
             $userAchievements = $user->userAchievements()
                 ->with('achievement')
                 ->orderBy('earned_at', 'desc')
@@ -248,10 +278,10 @@ class AchievementController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to get user achievements', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get user achievements',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถดึงข้อมูลความสำเร็จของผู้ใช้ได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }

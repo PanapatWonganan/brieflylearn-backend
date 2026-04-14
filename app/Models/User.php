@@ -26,6 +26,17 @@ class User extends Authenticatable implements FilamentUser
         'role',
         'email_verified',
         'phone',
+        'google_id',
+        'last_active_at',
+        'onboarding_step',
+        'goals',
+        'interests',
+        'experience_level',
+        'onboarding_completed',
+        'current_streak',
+        'last_streak_date',
+        'weekly_email_sent_at',
+        'inactive_email_sent_at',
     ];
 
     /**
@@ -47,8 +58,16 @@ class User extends Authenticatable implements FilamentUser
     {
         return [
             'email_verified' => 'boolean',
+            'onboarding_completed' => 'boolean',
+            'goals' => 'array',
+            'interests' => 'array',
+            'token_expires_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
+            'last_active_at' => 'datetime',
+            'last_streak_date' => 'date',
+            'weekly_email_sent_at' => 'datetime',
+            'inactive_email_sent_at' => 'datetime',
         ];
     }
 
@@ -114,6 +133,38 @@ class User extends Authenticatable implements FilamentUser
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->role === 'admin';
+    }
+
+    /**
+     * Update user's daily streak
+     */
+    public function updateStreak(): void
+    {
+        $today = now()->toDateString();
+
+        if ($this->last_streak_date === null) {
+            $this->current_streak = 1;
+            $this->last_streak_date = $today;
+            $this->save();
+            return;
+        }
+
+        $lastDate = $this->last_streak_date->toDateString();
+
+        if ($lastDate === $today) {
+            return; // Already counted today
+        }
+
+        $yesterday = now()->subDay()->toDateString();
+
+        if ($lastDate === $yesterday) {
+            $this->current_streak += 1;
+        } else {
+            $this->current_streak = 1; // Streak broken, restart
+        }
+
+        $this->last_streak_date = $today;
+        $this->save();
     }
 
     /**
@@ -207,5 +258,10 @@ class User extends Authenticatable implements FilamentUser
     public function hasGarden(): bool
     {
         return $this->garden()->exists();
+    }
+
+    public function sequenceSubscriptions()
+    {
+        return $this->hasMany(EmailSequenceSubscription::class);
     }
 }

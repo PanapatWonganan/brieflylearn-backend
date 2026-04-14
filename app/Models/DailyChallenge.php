@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Carbon\Carbon;
+use App\Models\User;
+use App\Models\LessonProgress;
+use App\Models\VideoAccessLog;
+use App\Models\GardenActivity;
 
 class DailyChallenge extends Model
 {
@@ -136,20 +140,68 @@ class DailyChallenge extends Model
 
     private function checkCourseCompletion(User $user, array $requirements): bool
     {
-        // Logic สำหรับตรวจสอบการเรียนจบคอร์ส
-        return true; // Placeholder
+        if (!$user) {
+            return false;
+        }
+
+        try {
+            // Check if user completed any lesson today
+            $today = now()->startOfDay();
+            return LessonProgress::where('user_id', $user->id)
+                ->where('is_completed', true)
+                ->where('completed_at', '>=', $today)
+                ->exists();
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     private function checkVideoWatch(User $user, array $requirements): bool
     {
-        // Logic สำหรับตรวจสอบการดูวิดีโอ
-        return true; // Placeholder
+        if (!$user) {
+            return false;
+        }
+
+        try {
+            $today = now()->startOfDay();
+
+            // Try VideoAccessLog first
+            $watched = VideoAccessLog::where('user_id', $user->id)
+                ->where('created_at', '>=', $today)
+                ->exists();
+
+            if ($watched) {
+                return true;
+            }
+
+            // Fallback: check LessonProgress for any progress update today
+            return LessonProgress::where('user_id', $user->id)
+                ->where('updated_at', '>=', $today)
+                ->where('watch_time', '>', 0)
+                ->exists();
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     private function checkLogin(User $user, array $requirements): bool
     {
-        // Logic สำหรับตรวจสอบการเข้าสู่ระบบ
-        return true; // Placeholder
+        if (!$user) {
+            return false;
+        }
+
+        try {
+            // Check if user has any activity today
+            // Since we don't have a login_log table, check if user has any activity today
+            $today = now()->startOfDay();
+
+            return GardenActivity::where('user_id', $user->id)
+                ->where('created_at', '>=', $today)
+                ->exists()
+                || $user->updated_at >= $today;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     private function checkPlantCare(User $user, array $requirements): bool

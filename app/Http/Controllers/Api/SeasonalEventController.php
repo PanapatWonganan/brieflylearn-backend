@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\UserGarden;
-use App\Models\User;
 use App\Models\GardenActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,12 +14,12 @@ use Carbon\Carbon;
 class SeasonalEventController extends Controller
 {
     /**
-     * Get current user ID (for testing, use first user)
+     * Get current user ID from authenticated request
      */
-    private function getCurrentUserId(): string
+    private function getCurrentUserId(Request $request): ?string
     {
-        $user = User::first();
-        return $user ? $user->id : '0198b246-1b0e-7cd6-8f5e-8a0a5b787402';
+        $user = Auth::user() ?? $request->auth_user;
+        return $user ? $user->id : null;
     }
 
     /**
@@ -70,7 +69,14 @@ class SeasonalEventController extends Controller
                 ], 400);
             }
 
-            $userId = $this->getCurrentUserId();
+            $userId = $this->getCurrentUserId($request);
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
             $garden = UserGarden::where('user_id', $userId)->first();
 
             if (!$garden) {
@@ -157,7 +163,14 @@ class SeasonalEventController extends Controller
                 ], 400);
             }
 
-            $userId = $this->getCurrentUserId();
+            $userId = $this->getCurrentUserId($request);
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
             $garden = UserGarden::where('user_id', $userId)->first();
 
             if (!$garden) {

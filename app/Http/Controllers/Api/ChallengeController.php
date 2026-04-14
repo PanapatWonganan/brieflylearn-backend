@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UpdateChallengeProgressRequest;
 use App\Models\DailyChallenge;
 use App\Models\UserChallengeProgress;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ChallengeController extends Controller
 {
@@ -18,8 +21,13 @@ class ChallengeController extends Controller
     {
         try {
             // For testing - use demo user if no auth
-            $user = $request->user() ?? \App\Models\User::first();
-            
+            $user = Auth::user() ?? $request->auth_user;
+
+            // Auto-create today's challenges if none exist
+            if (DailyChallenge::today()->active()->count() === 0) {
+                $this->autoCreateDailyChallenges();
+            }
+
             $challenges = DailyChallenge::getTodayChallengesForUser($user->id);
 
             // สถิติของวันนี้
@@ -45,17 +53,50 @@ class ChallengeController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to get today\'s challenges', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get today\'s challenges',
-                'error' => $e->getMessage(),
-                'debug_info' => [
-                    'user_id' => $user?->id ?? 'no_user',
-                    'today_date' => today()->format('Y-m-d'),
-                    'total_daily_challenges' => DailyChallenge::count(),
-                    'today_challenges_raw' => DailyChallenge::today()->count()
-                ]
+                'message' => 'ไม่สามารถดึงข้อมูลภารกิจประจำวันได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
+        }
+    }
+
+    /**
+     * Auto-create daily challenges when none exist for today.
+     * Rotates through different challenge sets for variety.
+     */
+    private function autoCreateDailyChallenges(): void
+    {
+        $dayOfWeek = now()->dayOfWeek; // 0=Sun, 1=Mon, ...
+
+        $challengeSets = [
+            // Set 0 (Sun): Focus on learning
+            [
+                ['name' => 'เรียนรู้สิ่งใหม่', 'description' => 'เรียนบทเรียนให้จบ 1 บทเรียน', 'challenge_type' => 'course_complete', 'requirements' => ['type' => 'complete_lesson', 'count' => 1], 'xp_reward' => 100, 'star_seeds_reward' => 50],
+                ['name' => 'ดูแลโปรเจกต์', 'description' => 'รดน้ำพืชในสวน 1 ต้น', 'challenge_type' => 'plant_care', 'requirements' => ['type' => 'water_plants', 'count' => 1], 'xp_reward' => 50, 'star_seeds_reward' => 20],
+                ['name' => 'เริ่มต้นใหม่', 'description' => 'ปลูกพืชใหม่ 1 ต้น', 'challenge_type' => 'plant_care', 'requirements' => ['type' => 'plant_seed', 'count' => 1], 'xp_reward' => 75, 'star_seeds_reward' => 30],
+            ],
+            // Set 1 (Mon): Focus on plant care
+            [
+                ['name' => 'ดูแลสวนตอนเช้า', 'description' => 'รดน้ำพืชในสวน 2 ต้น', 'challenge_type' => 'plant_care', 'requirements' => ['type' => 'water_plants', 'count' => 2], 'xp_reward' => 60, 'star_seeds_reward' => 25],
+                ['name' => 'ขยายสวน', 'description' => 'ปลูกพืชใหม่ 1 ต้น', 'challenge_type' => 'plant_care', 'requirements' => ['type' => 'plant_seed', 'count' => 1], 'xp_reward' => 75, 'star_seeds_reward' => 30],
+                ['name' => 'พัฒนาทักษะ', 'description' => 'เรียนบทเรียน 1 บท', 'challenge_type' => 'course_complete', 'requirements' => ['type' => 'complete_lesson', 'count' => 1], 'xp_reward' => 100, 'star_seeds_reward' => 50],
+            ],
+            // Set 2 (Tue-Sat): Mixed
+            [
+                ['name' => 'รดน้ำสวนประจำวัน', 'description' => 'รดน้ำพืชอย่างน้อย 1 ต้น', 'challenge_type' => 'plant_care', 'requirements' => ['type' => 'water_plants', 'count' => 1], 'xp_reward' => 50, 'star_seeds_reward' => 20],
+                ['name' => 'เรียนรู้เพิ่มเติม', 'description' => 'เรียนจบ 1 บทเรียน', 'challenge_type' => 'course_complete', 'requirements' => ['type' => 'complete_lesson', 'count' => 1], 'xp_reward' => 100, 'star_seeds_reward' => 50],
+                ['name' => 'สร้างโปรเจกต์ AI', 'description' => 'ปลูกพืชใหม่ในห้องปฏิบัติการ', 'challenge_type' => 'plant_care', 'requirements' => ['type' => 'plant_seed', 'count' => 1], 'xp_reward' => 75, 'star_seeds_reward' => 30],
+            ],
+        ];
+
+        $setIndex = $dayOfWeek <= 1 ? $dayOfWeek : 2;
+        $challenges = $challengeSets[$setIndex];
+
+        foreach ($challenges as $challengeData) {
+            $challengeData['available_date'] = today();
+            $challengeData['is_active'] = true;
+            DailyChallenge::create($challengeData);
         }
     }
 
@@ -122,10 +163,10 @@ class ChallengeController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to create challenges', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create challenges',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถสร้างภารกิจตัวอย่างได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -137,7 +178,7 @@ class ChallengeController extends Controller
     {
         try {
             // For testing - use demo user if no auth
-            $user = $request->user() ?? \App\Models\User::first();
+            $user = Auth::user() ?? $request->auth_user;
             $days = $request->query('days', 7); // Default 7 days
 
             $startDate = now()->subDays($days);
@@ -194,10 +235,10 @@ class ChallengeController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to get challenge history', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get challenge history',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถดึงข้อมูลประวัติภารกิจได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -205,16 +246,13 @@ class ChallengeController extends Controller
     /**
      * Update challenge progress
      */
-    public function updateProgress(Request $request, string $challengeId): JsonResponse
+    public function updateProgress(UpdateChallengeProgressRequest $request, string $challengeId): JsonResponse
     {
         try {
-            $validated = $request->validate([
-                'increment' => 'integer|min:1|max:100',
-                'progress_data' => 'array'
-            ]);
+            $validated = $request->validated();
 
             // For testing - use demo user if no auth
-            $user = $request->user() ?? \App\Models\User::first();
+            $user = Auth::user() ?? $request->auth_user;
             $challenge = DailyChallenge::active()->find($challengeId);
 
             if (!$challenge) {
@@ -280,10 +318,10 @@ class ChallengeController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to update challenge progress', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update challenge progress',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถอัปเดตความคืบหน้าของภารกิจได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -334,7 +372,7 @@ class ChallengeController extends Controller
 
             // หาตำแหน่งของผู้ใช้ปัจจุบัน
             // For testing - use demo user if no auth
-            $user = $request->user() ?? \App\Models\User::first();
+            $user = Auth::user() ?? $request->auth_user;
             $userRank = UserChallengeProgress::query()
                 ->select('user_id')
                 ->selectRaw('COUNT(*) as challenges_completed')
@@ -372,10 +410,10 @@ class ChallengeController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to get leaderboard', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get leaderboard',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถดึงข้อมูลกระดานคะแนนได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }

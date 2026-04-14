@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\User;
+use App\Models\LessonProgress;
+use App\Models\GardenActivity;
 
 class Achievement extends Model
 {
@@ -130,9 +133,41 @@ class Achievement extends Model
 
     private function checkConsecutiveDaysCriteria(User $user, array $criteria): bool
     {
-        $requiredDays = $criteria['days'] ?? 7;
-        // Logic สำหรับตรวจสอบการเข้าใช้ติดต่อกัน
-        return true; // Placeholder
+        if (!$user) {
+            return false;
+        }
+
+        try {
+            $requiredDays = $criteria['days'] ?? 7;
+
+            // Get all activities grouped by date
+            $activities = GardenActivity::where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->groupBy(function ($activity) {
+                    return $activity->created_at->toDateString();
+                });
+
+            // Count consecutive days
+            $consecutiveDays = 0;
+            $checkDate = now()->startOfDay();
+
+            // Check from today backwards
+            for ($i = 0; $i < $requiredDays + 10; $i++) {
+                $dateStr = $checkDate->toDateString();
+                if ($activities->has($dateStr)) {
+                    $consecutiveDays++;
+                    $checkDate->subDay();
+                } else {
+                    // Break on first missing day
+                    break;
+                }
+            }
+
+            return $consecutiveDays >= $requiredDays;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     private function checkLevelReachCriteria(User $user, array $criteria): bool

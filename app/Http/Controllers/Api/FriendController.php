@@ -3,24 +3,27 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\SendFriendRequestRequest;
+use App\Http\Requests\AcceptFriendRequestRequest;
+use App\Http\Requests\RejectFriendRequestRequest;
+use App\Http\Requests\SearchUsersRequest;
 use App\Models\GardenFriend;
 use App\Models\User;
 use App\Models\UserGarden;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class FriendController extends Controller
 {
     /**
-     * Get current user ID (for testing, use a default user)
+     * Get current user ID (returns null if not authenticated)
      */
-    private function getCurrentUserId(): string
+    private function getCurrentUserId(): ?string
     {
-        // For testing purposes, use a default test user ID
-        // In production, this should use Auth::id()
-        return Auth::id() ?? '0198b246-1b0e-7cd6-8f5e-8a0a5b787402'; // Test user ID from seeder
+        return Auth::id();
     }
     /**
      * Get friends list for the authenticated user
@@ -29,11 +32,20 @@ class FriendController extends Controller
     {
         try {
             $userId = $this->getCurrentUserId();
+
+            if (!$userId) {
+                return $this->authError();
+            }
+
             $friends = GardenFriend::getFriendsList($userId);
-            
+
+            // Pre-fetch all gardens to avoid N+1 query
+            $friendIds = collect($friends)->pluck('id')->toArray();
+            $gardens = UserGarden::whereIn('user_id', $friendIds)->get()->keyBy('user_id');
+
             // Enrich friends data with garden info
-            $enrichedFriends = collect($friends)->map(function($friend) {
-                $garden = UserGarden::where('user_id', $friend['id'])->first();
+            $enrichedFriends = collect($friends)->map(function($friend) use ($gardens) {
+                $garden = $gardens->get($friend['id']);
                 return [
                     'id' => $friend['id'],
                     'name' => $friend['name'],
@@ -72,6 +84,11 @@ class FriendController extends Controller
     {
         try {
             $userId = $this->getCurrentUserId();
+
+            if (!$userId) {
+                return $this->authError();
+            }
+
             $pendingRequests = GardenFriend::getPendingRequests($userId);
             
             return response()->json([
@@ -93,22 +110,15 @@ class FriendController extends Controller
     /**
      * Send friend request
      */
-    public function sendFriendRequest(Request $request): JsonResponse
+    public function sendFriendRequest(SendFriendRequestRequest $request): JsonResponse
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'friend_email' => 'required|email|exists:users,email',
-            ]);
+            $userId = $this->getCurrentUserId();
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'ข้อมูลไม่ถูกต้อง',
-                    'errors' => $validator->errors()
-                ], 400);
+            if (!$userId) {
+                return $this->authError();
             }
 
-            $userId = $this->getCurrentUserId();
             $friendUser = User::where('email', $request->friend_email)->first();
 
             if (!$friendUser) {
@@ -176,10 +186,15 @@ class FriendController extends Controller
     /**
      * Accept friend request
      */
-    public function acceptFriendRequest(string $requestId): JsonResponse
+    public function acceptFriendRequest(AcceptFriendRequestRequest $request, string $requestId): JsonResponse
     {
         try {
             $userId = $this->getCurrentUserId();
+
+            if (!$userId) {
+                return $this->authError();
+            }
+
             $friendRequest = GardenFriend::where('id', $requestId)
                 ->where('friend_id', $userId)
                 ->where('status', 'pending')
@@ -222,10 +237,15 @@ class FriendController extends Controller
     /**
      * Reject friend request
      */
-    public function rejectFriendRequest(string $requestId): JsonResponse
+    public function rejectFriendRequest(RejectFriendRequestRequest $request, string $requestId): JsonResponse
     {
         try {
             $userId = $this->getCurrentUserId();
+
+            if (!$userId) {
+                return $this->authError();
+            }
+
             $friendRequest = GardenFriend::where('id', $requestId)
                 ->where('friend_id', $userId)
                 ->where('status', 'pending')
@@ -265,7 +285,11 @@ class FriendController extends Controller
     {
         try {
             $userId = $this->getCurrentUserId();
-            
+
+            if (!$userId) {
+                return $this->authError();
+            }
+
             $friendship = GardenFriend::where(function($query) use ($userId, $friendId) {
                 $query->where('user_id', $userId)->where('friend_id', $friendId);
             })->orWhere(function($query) use ($userId, $friendId) {
@@ -309,7 +333,11 @@ class FriendController extends Controller
     {
         try {
             $userId = $this->getCurrentUserId();
-            
+
+            if (!$userId) {
+                return $this->authError();
+            }
+
             // Check if they are friends
             if (!GardenFriend::areFriends($userId, $friendId)) {
                 return response()->json([
@@ -390,7 +418,11 @@ class FriendController extends Controller
     {
         try {
             $userId = $this->getCurrentUserId();
-            
+
+            if (!$userId) {
+                return $this->authError();
+            }
+
             // Check if they are friends
             if (!GardenFriend::areFriends($userId, $friendId)) {
                 return response()->json([
@@ -458,28 +490,24 @@ class FriendController extends Controller
     /**
      * Search users to add as friends
      */
-    public function searchUsers(Request $request): JsonResponse
+    public function searchUsers(SearchUsersRequest $request): JsonResponse
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'query' => 'required|string|min:2|max:50',
-            ]);
+            $userId = $this->getCurrentUserId();
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'กรุณากรอกคำค้นหาอย่างน้อย 2 ตัวอักษร',
-                    'errors' => $validator->errors()
-                ], 400);
+            if (!$userId) {
+                return $this->authError();
             }
 
-            $userId = $this->getCurrentUserId();
             $query = $request->query;
 
+            // Escape SQL LIKE wildcards to prevent injection
+            $escapedQuery = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $query);
+
             $users = User::where('id', '!=', $userId)
-                ->where(function($q) use ($query) {
-                    $q->where('name', 'LIKE', "%{$query}%")
-                      ->orWhere('email', 'LIKE', "%{$query}%");
+                ->where(function($q) use ($escapedQuery) {
+                    $q->where('name', 'LIKE', "%{$escapedQuery}%")
+                      ->orWhere('email', 'LIKE', "%{$escapedQuery}%");
                 })
                 ->limit(10)
                 ->get();

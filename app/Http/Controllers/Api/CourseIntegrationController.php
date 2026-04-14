@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\CourseProgressService;
+use App\Services\MetaConversionsService;
 use App\Models\User;
 use App\Models\Lesson;
 use App\Models\Course;
@@ -14,8 +15,10 @@ use App\Events\CourseCompleted;
 use App\Models\Achievement;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class CourseIntegrationController extends Controller
@@ -45,13 +48,12 @@ class CourseIntegrationController extends Controller
                 ], 400);
             }
 
-            // Use demo user for testing or authenticated user
-            $user = $request->user() ?? User::first();
+            $user = Auth::user() ?? $request->auth_user;
             if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User not found'
-                ], 404);
+                    'message' => 'User not authenticated'
+                ], 401);
             }
 
             $lesson = Lesson::with('course')->find($lessonId);
@@ -101,6 +103,23 @@ class CourseIntegrationController extends Controller
 
             DB::commit();
 
+            // Track lesson completion with Meta Conversions API
+            try {
+                $metaConversions = app(MetaConversionsService::class);
+                $metaConversions->trackLessonComplete(
+                    $user, $request, $lesson,
+                    ['xp' => null, 'star_seeds' => null],
+                    $request->input('meta_event_id')
+                );
+
+                // If course was completed, also track as Purchase
+                if ($courseCompleted) {
+                    $metaConversions->trackCourseCompletion($user, $request, $lesson->course);
+                }
+            } catch (\Exception $e) {
+                Log::warning('Meta CAPI: LessonComplete/Purchase failed', ['error' => $e->getMessage()]);
+            }
+
             // Get updated garden info
             $learningProgress = $this->courseProgressService->getUserLearningProgress($user);
 
@@ -126,8 +145,7 @@ class CourseIntegrationController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to complete lesson',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถบันทึกความสำเร็จของบทเรียนได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -138,13 +156,12 @@ class CourseIntegrationController extends Controller
     public function getLearningProgress(Request $request): JsonResponse
     {
         try {
-            // Use demo user for testing or authenticated user
-            $user = $request->user() ?? User::first();
+            $user = Auth::user() ?? $request->auth_user;
             if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User not found'
-                ], 404);
+                    'message' => 'User not authenticated'
+                ], 401);
             }
 
             $learningProgress = $this->courseProgressService->getUserLearningProgress($user);
@@ -162,8 +179,7 @@ class CourseIntegrationController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get learning progress',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถดึงข้อมูลความคืบหน้าการเรียนได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -212,8 +228,7 @@ class CourseIntegrationController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get course rewards preview',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถดูรางวัลของคอร์สได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -249,6 +264,13 @@ class CourseIntegrationController extends Controller
 
             // Fire course completed event
             event(new CourseCompleted($user, $course, $enrollment));
+
+            // Send course completed email
+            try {
+                Mail::to($user->email)->send(new \App\Mail\CourseCompletedMail($user, $course));
+            } catch (\Exception $e) {
+                Log::warning('Failed to send course completed email', ['user_id' => $user->id, 'course_id' => $course->id, 'error' => $e->getMessage()]);
+            }
 
             return true;
         }

@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PlantSeedRequest;
+use App\Http\Requests\WaterPlantRequest;
+use App\Http\Requests\HarvestPlantRequest;
 use App\Models\User;
 use App\Models\UserGarden;
 use App\Models\PlantType;
@@ -14,44 +17,18 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class GardenController extends Controller
 {
     /**
-     * Get authenticated user from token
+     * Get authenticated user from middleware
      */
     private function getAuthenticatedUser(Request $request)
     {
-        $token = $request->header('Authorization');
-        if (!$token) {
-            return null;
-        }
-
-        // Remove "Bearer " prefix if present
-        $token = str_replace('Bearer ', '', $token);
-        
-        // Decode token
-        $decoded = base64_decode($token);
-        $parts = explode('|', $decoded);
-        
-        if (count($parts) !== 2) {
-            return null;
-        }
-
-        $userId = $parts[0];
-        return User::find($userId);
-    }
-
-    /**
-     * Return auth error response
-     */
-    private function authError($message = 'Authentication required')
-    {
-        return response()->json([
-            'success' => false,
-            'message' => $message
-        ], 401);
+        return Auth::user() ?? $request->auth_user;
     }
     /**
      * Get user's garden information
@@ -141,10 +118,10 @@ class GardenController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to get garden information', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get garden information',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถดึงข้อมูลสวนได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -186,10 +163,10 @@ class GardenController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to get plant types', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get plant types',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถดึงข้อมูลประเภทพืชได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -197,15 +174,10 @@ class GardenController extends Controller
     /**
      * Plant a new plant in garden
      */
-    public function plantSeed(Request $request, string $plantTypeId): JsonResponse
+    public function plantSeed(PlantSeedRequest $request, string $plantTypeId): JsonResponse
     {
         try {
-            $validated = $request->validate([
-                'custom_name' => 'nullable|string|max:255',
-                'position' => 'nullable|array',
-                'position.x' => 'nullable|integer|min:0|max:10',
-                'position.y' => 'nullable|integer|min:0|max:10'
-            ]);
+            $validated = $request->validated();
 
             $user = $this->getAuthenticatedUser($request);
             if (!$user) {
@@ -314,10 +286,10 @@ class GardenController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to plant seed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to plant seed',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถปลูกพืชได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -325,7 +297,7 @@ class GardenController extends Controller
     /**
      * Water a plant
      */
-    public function waterPlant(Request $request, string $userPlantId): JsonResponse
+    public function waterPlant(WaterPlantRequest $request, string $userPlantId): JsonResponse
     {
         try {
             $user = $this->getAuthenticatedUser($request);
@@ -341,6 +313,9 @@ class GardenController extends Controller
                     'message' => 'Plant not found'
                 ], 404);
             }
+
+            // Authorization check
+            Gate::authorize('water', $plant);
 
             // Validate plant belongs to user's garden
             if ($plant->garden_id !== $garden->id) {
@@ -373,12 +348,27 @@ class GardenController extends Controller
             // ตรวจสอบว่าเติบโตหรือไม่
             $grewUp = $plant->stage > $oldStage;
 
-            // Add XP and star_seeds rewards to garden
+            // Add XP and star_seeds rewards to garden (atomic increment to prevent race condition)
             $xpReward = 5;
             $seedsReward = 2;
-            $garden->xp += $xpReward;
-            $garden->star_seeds += $seedsReward;
-            $garden->save();
+            $garden->increment('xp', $xpReward);
+            $garden->increment('star_seeds', $seedsReward);
+            $garden->refresh(); // Refresh to get updated values for response
+
+            // บันทึกกิจกรรม (inside transaction to prevent race condition)
+            GardenActivity::logActivity(
+                $user->id,
+                $garden->id,
+                'water',
+                'plant',
+                $plant->id,
+                $xpReward,
+                $seedsReward,
+                [
+                    'plant_name' => $plant->getDisplayName(),
+                    'stage_after' => $plant->stage
+                ]
+            );
 
             DB::commit();
 
@@ -412,10 +402,10 @@ class GardenController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to water plant', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to water plant',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถรดน้ำพืชได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -423,7 +413,7 @@ class GardenController extends Controller
     /**
      * Harvest a fully grown plant
      */
-    public function harvestPlant(Request $request, string $userPlantId): JsonResponse
+    public function harvestPlant(HarvestPlantRequest $request, string $userPlantId): JsonResponse
     {
         try {
             $user = $this->getAuthenticatedUser($request);
@@ -439,6 +429,9 @@ class GardenController extends Controller
                     'message' => 'Plant not found'
                 ], 404);
             }
+
+            // Authorization check
+            Gate::authorize('harvest', $plant);
 
             // Validate plant belongs to user's garden
             if ($plant->garden_id !== $garden->id) {
@@ -490,10 +483,10 @@ class GardenController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to harvest plant', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to harvest plant',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถเก็บเกี่ยวพืชได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -510,22 +503,30 @@ class GardenController extends Controller
             }
             $garden = $user->getOrCreateGarden();
 
-            if (!$garden->needsWatering()) {
-                $hoursLeft = 4 - $garden->last_watered_at->diffInHours(now());
-                return response()->json([
-                    'success' => false,
-                    'message' => "Garden does not need watering yet. Try again in {$hoursLeft} hour(s).",
-                    'last_watered_at' => $garden->last_watered_at?->format('Y-m-d H:i:s'),
-                    'next_water_at' => $garden->last_watered_at?->addHours(4)->format('Y-m-d H:i:s')
-                ], 400);
-            }
+            // Authorization check
+            Gate::authorize('water', $garden);
 
             DB::beginTransaction();
 
-            $garden->water();
+            // Lock garden row to prevent race condition on watering cooldown
+            $lockedGarden = UserGarden::lockForUpdate()->find($garden->id);
+
+            // Re-check watering requirement after acquiring lock
+            if (!$lockedGarden->needsWatering()) {
+                DB::rollBack();
+                $hoursLeft = 4 - $lockedGarden->last_watered_at->diffInHours(now());
+                return response()->json([
+                    'success' => false,
+                    'message' => "Garden does not need watering yet. Try again in {$hoursLeft} hour(s).",
+                    'last_watered_at' => $lockedGarden->last_watered_at?->format('Y-m-d H:i:s'),
+                    'next_water_at' => $lockedGarden->last_watered_at?->addHours(4)->format('Y-m-d H:i:s')
+                ], 400);
+            }
+
+            $lockedGarden->water();
 
             // รดน้ำพืชทั้งหมดที่ต้องการน้ำ
-            $plantsNeedingWater = $garden->plants()
+            $plantsNeedingWater = $lockedGarden->plants()
                 ->needsWatering()
                 ->get();
             $wateredCount = 0;
@@ -537,15 +538,18 @@ class GardenController extends Controller
 
             DB::commit();
 
+            // Refresh to get latest values after transaction
+            $lockedGarden->refresh();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Garden watered successfully!',
                 'data' => [
                     'garden' => [
-                        'last_watered_at' => $garden->last_watered_at?->format('Y-m-d H:i:s'),
-                        'xp' => $garden->xp,
-                        'level' => $garden->level,
-                        'star_seeds' => $garden->star_seeds
+                        'last_watered_at' => $lockedGarden->last_watered_at?->format('Y-m-d H:i:s'),
+                        'xp' => $lockedGarden->xp,
+                        'level' => $lockedGarden->level,
+                        'star_seeds' => $lockedGarden->star_seeds
                     ],
                     'plants_watered' => $wateredCount,
                     'rewards' => [
@@ -557,10 +561,10 @@ class GardenController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to water garden', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to water garden',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถรดน้ำสวนได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }

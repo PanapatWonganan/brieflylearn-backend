@@ -3,44 +3,34 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UpdateLessonProgressRequest;
 use App\Models\Course;
+use App\Models\Enrollment;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProgressController extends Controller
 {
     public function getMySummary(Request $request)
     {
         try {
-            // Get user from token (simple implementation)
-            $token = $request->header('Authorization');
-            if (!$token) {
+            // Get authenticated user from middleware
+            $user = Auth::user() ?? $request->auth_user;
+
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No token provided',
+                    'message' => 'User not authenticated',
                     'summary' => []
-                ]);
+                ], 401);
             }
 
-            // Remove "Bearer " prefix if present
-            $token = str_replace('Bearer ', '', $token);
-            
-            // Decode token
-            $decoded = base64_decode($token);
-            $parts = explode('|', $decoded);
-            
-            if (count($parts) !== 2) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid token format',
-                    'summary' => []
-                ]);
-            }
-
-            $userId = $parts[0];
+            $userId = $user->id;
 
             // Get overall progress summary
             $totalCourses = Course::count();
@@ -145,43 +135,31 @@ class ProgressController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to fetch progress summary', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch progress summary: ' . $e->getMessage(),
+                'message' => 'ไม่สามารถดึงข้อมูลความคืบหน้าได้ กรุณาลองใหม่อีกครั้ง',
                 'summary' => []
             ], 500);
         }
     }
 
-    public function updateLessonProgress(Request $request, $lessonId)
+    public function updateLessonProgress(UpdateLessonProgressRequest $request, $lessonId)
     {
         try {
-            $request->validate([
-                'is_completed' => 'required|boolean',
-                'watch_time' => 'nullable|integer|min:0'
-            ]);
+            $validated = $request->validated();
 
-            // Get user from token
-            $token = $request->header('Authorization');
-            if (!$token) {
+            // Get authenticated user from middleware
+            $user = Auth::user() ?? $request->auth_user;
+
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No token provided'
-                ]);
+                    'message' => 'User not authenticated'
+                ], 401);
             }
 
-            $token = str_replace('Bearer ', '', $token);
-            $decoded = base64_decode($token);
-            $parts = explode('|', $decoded);
-            
-            if (count($parts) !== 2) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid token format'
-                ]);
-            }
-
-            $userId = $parts[0];
+            $userId = $user->id;
 
             // Check if lesson exists
             $lesson = Lesson::find($lessonId);
@@ -192,17 +170,38 @@ class ProgressController extends Controller
                 ], 404);
             }
 
+            // Find the user's enrollment for this lesson's course (REQUIRED)
+            $enrollment = Enrollment::where('user_id', $userId)
+                ->where('course_id', $lesson->course_id)
+                ->first();
+
+            // Authorization: User must be enrolled in the course
+            if (!$enrollment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ไม่ได้ลงทะเบียนในคอร์สนี้'
+                ], 403);
+            }
+
+            // Build update data — only include is_completed if explicitly sent
+            $updateData = [
+                'watch_time' => $validated['watch_time'] ?? 0,
+                'enrollment_id' => $enrollment->id
+            ];
+
+            // Only update is_completed if it was explicitly provided in the request
+            if (array_key_exists('is_completed', $validated)) {
+                $updateData['is_completed'] = $validated['is_completed'];
+                $updateData['completed_at'] = $validated['is_completed'] ? now() : null;
+            }
+
             // Update or create lesson progress
             $progress = LessonProgress::updateOrCreate(
                 [
                     'user_id' => $userId,
                     'lesson_id' => $lessonId
                 ],
-                [
-                    'is_completed' => $request->is_completed,
-                    'watch_time' => $request->watch_time ?? 0,
-                    'completed_at' => $request->is_completed ? now() : null
-                ]
+                $updateData
             );
 
             return response()->json([
@@ -218,9 +217,10 @@ class ProgressController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to update progress', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update progress: ' . $e->getMessage()
+                'message' => 'ไม่สามารถอัปเดตความคืบหน้าได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -228,27 +228,17 @@ class ProgressController extends Controller
     public function getCourseProgress(Request $request, $courseId)
     {
         try {
-            // Get user from token
-            $token = $request->header('Authorization');
-            if (!$token) {
+            // Get authenticated user from middleware
+            $user = Auth::user() ?? $request->auth_user;
+
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No token provided'
-                ]);
+                    'message' => 'User not authenticated'
+                ], 401);
             }
 
-            $token = str_replace('Bearer ', '', $token);
-            $decoded = base64_decode($token);
-            $parts = explode('|', $decoded);
-            
-            if (count($parts) !== 2) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid token format'
-                ]);
-            }
-
-            $userId = $parts[0];
+            $userId = $user->id;
 
             // Check if course exists
             $course = Course::with('instructor:id,full_name')->find($courseId);
@@ -259,30 +249,41 @@ class ProgressController extends Controller
                 ], 404);
             }
 
-            // Get course lessons with progress
+            // Get course lessons
             $lessons = Lesson::where('course_id', $courseId)
                 ->select('id', 'title', 'description', 'duration')
-                ->get()
-                ->map(function ($lesson) use ($userId) {
-                    $progress = LessonProgress::where('user_id', $userId)
-                        ->where('lesson_id', $lesson->id)
-                        ->first();
+                ->get();
 
-                    return [
-                        'lesson_id' => $lesson->id,
-                        'title' => $lesson->title,
-                        'description' => $lesson->description,
-                        'duration' => $lesson->duration,
-                        'is_completed' => $progress ? $progress->is_completed : false,
-                        'watch_time' => $progress ? $progress->watch_time : 0,
-                        'completed_at' => $progress && $progress->completed_at 
-                            ? $progress->completed_at->format('Y-m-d H:i:s') 
-                            : null,
-                        'progress_percentage' => $progress && $lesson->duration > 0 
-                            ? round(($progress->watch_time / $lesson->duration) * 100) 
-                            : 0
-                    ];
-                });
+            // Fetch all lesson progress for this user+course in ONE query (prevent N+1)
+            $lessonIds = $lessons->pluck('id');
+            $progressMap = LessonProgress::where('user_id', $userId)
+                ->whereIn('lesson_id', $lessonIds)
+                ->get()
+                ->keyBy('lesson_id');
+
+            // Map lessons with progress data
+            $lessons = $lessons->map(function ($lesson) use ($progressMap) {
+                $progress = $progressMap->get($lesson->id);
+
+                // Calculate progress percentage with defensive null check and cap at 100%
+                $progressPercentage = 0;
+                if ($progress && !empty($lesson->duration) && $lesson->duration > 0) {
+                    $progressPercentage = min(100, round(($progress->watch_time / $lesson->duration) * 100));
+                }
+
+                return [
+                    'lesson_id' => $lesson->id,
+                    'title' => $lesson->title,
+                    'description' => $lesson->description,
+                    'duration' => $lesson->duration,
+                    'is_completed' => $progress ? $progress->is_completed : false,
+                    'watch_time' => $progress ? $progress->watch_time : 0,
+                    'completed_at' => $progress && $progress->completed_at
+                        ? $progress->completed_at->format('Y-m-d H:i:s')
+                        : null,
+                    'progress_percentage' => $progressPercentage
+                ];
+            });
 
             $totalLessons = $lessons->count();
             $completedLessons = $lessons->where('is_completed', true)->count();
@@ -307,9 +308,10 @@ class ProgressController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to fetch course progress', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch course progress: ' . $e->getMessage()
+                'message' => 'ไม่สามารถดึงข้อมูลความคืบหน้าของคอร์สได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }

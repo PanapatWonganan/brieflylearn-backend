@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\UserGarden;
-use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,14 +12,12 @@ use Illuminate\Support\Facades\Validator;
 class CommunityGardenController extends Controller
 {
     /**
-     * Get current user ID (for testing, use first user)
+     * Get current user ID from authenticated request
      */
-    private function getCurrentUserId(): string
+    private function getCurrentUserId(Request $request): ?string
     {
-        // For testing purposes, use first user like other controllers
-        // In production, this should use Auth::id()
-        $user = User::first();
-        return $user ? $user->id : '0198b246-1b0e-7cd6-8f5e-8a0a5b787402';
+        $user = Auth::user() ?? $request->auth_user;
+        return $user ? $user->id : null;
     }
 
     /**
@@ -171,7 +168,13 @@ class CommunityGardenController extends Controller
     public function visitPublicGarden(Request $request, string $gardenId): JsonResponse
     {
         try {
-            $userId = $this->getCurrentUserId();
+            $userId = $this->getCurrentUserId($request);
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
 
             // Mock garden visit data
             $gardenData = [
@@ -244,7 +247,13 @@ class CommunityGardenController extends Controller
     public function likeGarden(Request $request, string $gardenId): JsonResponse
     {
         try {
-            $userId = $this->getCurrentUserId();
+            $userId = $this->getCurrentUserId($request);
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
 
             // Simulate like action
             $result = [
@@ -277,7 +286,13 @@ class CommunityGardenController extends Controller
     public function waterPublicPlant(Request $request, string $gardenId, string $plantId): JsonResponse
     {
         try {
-            $userId = $this->getCurrentUserId();
+            $userId = $this->getCurrentUserId($request);
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
 
             // Simulate watering action
             $result = [
@@ -328,7 +343,13 @@ class CommunityGardenController extends Controller
                 ], 400);
             }
 
-            $userId = $this->getCurrentUserId();
+            $userId = $this->getCurrentUserId($request);
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
             $contributionType = $request->contribution_type;
 
             // Simulate joining project

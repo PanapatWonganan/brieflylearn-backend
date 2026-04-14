@@ -69,4 +69,18 @@ class Course extends Model
     {
         return $this->hasMany(Review::class);
     }
+
+    /**
+     * Accessor methods
+     */
+    public function getInstructorNameAttribute(): string
+    {
+        return $this->instructor?->full_name ?? 'Unknown';
+    }
+
+    public function getDurationMinutesAttribute(): int
+    {
+        // Sum up all lesson durations
+        return $this->lessons()->sum('duration_minutes');
+    }
 }

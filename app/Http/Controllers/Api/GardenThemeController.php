@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ApplyThemeRequest;
 use App\Models\UserGarden;
-use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,20 +13,18 @@ use Illuminate\Support\Facades\Validator;
 class GardenThemeController extends Controller
 {
     /**
-     * Get current user ID (for testing, use first user)
+     * Get current user ID from authenticated request
      */
-    private function getCurrentUserId(): string
+    private function getCurrentUserId(Request $request): ?string
     {
-        // For testing purposes, use first user like GardenController
-        // In production, this should use Auth::id()
-        $user = User::first();
-        return $user ? $user->id : '0198b246-1b0e-7cd6-8f5e-8a0a5b787402';
+        $user = Auth::user() ?? $request->auth_user;
+        return $user ? $user->id : null;
     }
 
     /**
      * Get available garden themes
      */
-    public function getAvailableThemes(): JsonResponse
+    public function getAvailableThemes(Request $request): JsonResponse
     {
         try {
             $themes = [
@@ -137,7 +135,14 @@ class GardenThemeController extends Controller
                 ]
             ];
 
-            $userId = $this->getCurrentUserId();
+            $userId = $this->getCurrentUserId($request);
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
             $garden = UserGarden::where('user_id', $userId)->first();
             $userLevel = $garden ? $garden->level : 1;
             $userStarSeeds = $garden ? $garden->star_seeds : 0;
@@ -190,22 +195,16 @@ class GardenThemeController extends Controller
     /**
      * Apply theme to user's garden
      */
-    public function applyTheme(Request $request): JsonResponse
+    public function applyTheme(ApplyThemeRequest $request): JsonResponse
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'theme_id' => 'required|string|max:50',
-            ]);
-
-            if ($validator->fails()) {
+            $userId = $this->getCurrentUserId($request);
+            if (!$userId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'ข้อมูลไม่ถูกต้อง',
-                    'errors' => $validator->errors()
-                ], 400);
+                    'message' => 'User not authenticated'
+                ], 401);
             }
-
-            $userId = $this->getCurrentUserId();
             $garden = UserGarden::where('user_id', $userId)->first();
 
             if (!$garden) {
@@ -310,10 +309,16 @@ class GardenThemeController extends Controller
     /**
      * Get user's current theme details
      */
-    public function getCurrentTheme(): JsonResponse
+    public function getCurrentTheme(Request $request): JsonResponse
     {
         try {
-            $userId = $this->getCurrentUserId();
+            $userId = $this->getCurrentUserId($request);
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
             $garden = UserGarden::where('user_id', $userId)->first();
 
             if (!$garden) {

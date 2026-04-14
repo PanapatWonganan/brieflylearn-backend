@@ -23,3 +23,6 @@ yarn-error.log
 /storage/app/private/temp-videos/*
 !/storage/app/private/videos/.gitkeep
 !/storage/app/private/temp-videos/.gitkeep
+.next/
+EMAIL_SETUP.md
+FORMREQUEST_IMPLEMENTATION.md

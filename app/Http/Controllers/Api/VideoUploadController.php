@@ -9,6 +9,7 @@ use App\Models\Video;
 use App\Models\VideoAccessLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\File;
@@ -78,15 +79,15 @@ class VideoUploadController extends Controller
             
         } catch (\Exception $e) {
             DB::rollback();
-            
+
             // Clean up uploaded file if exists
             if (isset($tempPath)) {
                 Storage::disk('local')->delete($tempPath);
             }
-            
+
+            Log::error('Failed to upload video', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
-                'message' => 'Failed to upload video',
-                'error' => $e->getMessage()
+                'message' => 'ไม่สามารถอัปโหลดวิดีโอได้ กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }
@@ -282,26 +283,13 @@ class VideoUploadController extends Controller
         }
         
         if (!$path || !file_exists($path)) {
-            \Log::error('Video file not found:', [
+            Log::error('Video file not found on server storage', [
                 'video_id' => $videoId,
-                'paths_tried' => $pathsToTry,
-                'video_original_path' => $video->original_path,
-                'video_hls_path' => $video->hls_path,
-                'video_status' => $video->status,
-                'video_created_at' => $video->created_at,
-                'all_possible_paths' => $possiblePaths ?? []
+                'video_status' => $video->status
             ]);
-            
-            // Return 404 with debug info for development
+
             return response()->json([
-                'message' => 'Video file not found on server storage',
-                'debug' => [
-                    'video_id' => $videoId,
-                    'status' => $video->status,
-                    'original_path' => $video->original_path,
-                    'hls_path' => $video->hls_path,
-                    'suggestion' => 'Please re-upload the video file through admin panel'
-                ]
+                'message' => 'ไม่พบไฟล์วิดีโอในระบบ กรุณาติดต่อผู้ดูแลระบบ'
             ], 404);
         }
         

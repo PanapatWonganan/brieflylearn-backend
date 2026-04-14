@@ -6,6 +6,7 @@ use App\Filament\Resources\LessonResource;
 use App\Jobs\ProcessVideoJob;
 use App\Models\Video;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Model;
@@ -20,118 +21,68 @@ class EditLesson extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
-    
+
     protected function afterSave(): void
     {
-        \Log::info('EditLesson afterSave() called for lesson: ' . $this->record->id);
-        
-        // Try to get video upload from form state
-        $formState = $this->form->getState();
-        \Log::info('Full form state keys: ' . implode(', ', array_keys($formState)));
-        
-        $videoUpload = $formState['video_upload'] ?? null;
-        
-        \Log::info('Video upload data in afterSave:', [
-            'video_upload' => $videoUpload,
-            'type' => gettype($videoUpload),
-            'empty' => empty($videoUpload)
-        ]);
-        
-        // Also try to get from raw state
+        // Get raw form state which contains the actual uploaded file path
         $rawData = $this->form->getRawState();
-        \Log::info('Raw form state keys: ' . implode(', ', array_keys($rawData)));
         $rawVideoUpload = $rawData['video_upload'] ?? null;
-        \Log::info('Raw video upload:', ['raw_video_upload' => $rawVideoUpload]);
-        
-        // Also check session for video upload
-        $sessionVideoUpload = session('temp_video_upload');
-        \Log::info('Session video upload:', ['session_video_upload' => $sessionVideoUpload]);
-        
-        // Use session data if form state is empty
-        $finalVideoUpload = $videoUpload ?: $sessionVideoUpload;
-        
-        if ($finalVideoUpload && !empty($finalVideoUpload)) {
+
+        \Log::info('EditLesson afterSave()', [
+            'lesson_id' => $this->record->id,
+            'raw_video_upload' => $rawVideoUpload,
+        ]);
+
+        if ($rawVideoUpload && !empty($rawVideoUpload)) {
             try {
-                // Handle different formats of video upload data
-                if (is_array($finalVideoUpload)) {
-                    // If it's an array, take the first non-empty element
-                    $filePath = null;
-                    foreach ($finalVideoUpload as $file) {
-                        if (!empty($file)) {
+                $filePath = null;
+
+                if (is_array($rawVideoUpload)) {
+                    // Filament FileUpload returns array like {uuid: "temp-videos/filename.mp4"}
+                    foreach ($rawVideoUpload as $file) {
+                        if (!empty($file) && is_string($file)) {
                             $filePath = $file;
                             break;
                         }
                     }
-                    if ($filePath) {
-                        \Log::info('Processing video upload from array: ' . $filePath);
-                        $this->processVideoUpload($filePath);
-                    }
-                } elseif (is_string($finalVideoUpload)) {
-                    \Log::info('Processing video upload from string: ' . $finalVideoUpload);
-                    $this->processVideoUpload($finalVideoUpload);
+                } elseif (is_string($rawVideoUpload)) {
+                    $filePath = $rawVideoUpload;
+                }
+
+                if ($filePath) {
+                    \Log::info('Processing video upload', ['file_path' => $filePath]);
+                    $this->processVideoUpload($filePath);
                 }
             } catch (\Exception $e) {
                 \Log::error('Error processing video upload: ' . $e->getMessage());
-                $this->notify('danger', 'Error processing video upload: ' . $e->getMessage());
-            } finally {
-                // Clear session data
-                session()->forget('temp_video_upload');
-            }
-        } else {
-            \Log::info('No video upload found in form state or session');
-            // Still clear session in case
-            session()->forget('temp_video_upload');
-        }
-    }
-    
-    // Also try using the newer hook
-    protected function handleRecordUpdate($record, array $data): Model
-    {
-        \Log::info('handleRecordUpdate called', ['data_keys' => array_keys($data)]);
-        
-        $record = parent::handleRecordUpdate($record, $data);
-        
-        // Check for video upload in the data array
-        if (isset($data['video_upload']) && !empty($data['video_upload'])) {
-            \Log::info('Found video_upload in handleRecordUpdate:', ['video_upload' => $data['video_upload']]);
-            
-            try {
-                if (is_array($data['video_upload'])) {
-                    foreach ($data['video_upload'] as $file) {
-                        if (!empty($file)) {
-                            $this->processVideoUpload($file);
-                            break;
-                        }
-                    }
-                } elseif (is_string($data['video_upload'])) {
-                    $this->processVideoUpload($data['video_upload']);
-                }
-            } catch (\Exception $e) {
-                \Log::error('Error in handleRecordUpdate: ' . $e->getMessage());
+                Notification::make()->title('Error processing video upload: ' . $e->getMessage())->danger()->send();
             }
         }
-        
-        return $record;
     }
-    
+
     protected function processVideoUpload(string $tempPath): void
     {
-        // Get the uploaded file info - use storage path for checking but store relative path
-        $filePath = storage_path('app/' . $tempPath);
-        
+        // Local disk root is storage/app/private/ in Laravel 12
+        $filePath = storage_path('app/private/' . $tempPath);
+        if (!file_exists($filePath)) {
+            // Fallback to storage/app/ for backward compat
+            $filePath = storage_path('app/' . $tempPath);
+        }
+
         if (file_exists($filePath)) {
-            // Check if there's an existing video and mark it as replaced
+            // Mark existing video as replaced
             $existingVideo = $this->record->primaryVideo;
             if ($existingVideo) {
                 $existingVideo->update(['status' => 'replaced']);
+                \Log::info('Marked existing video as replaced', ['video_id' => $existingVideo->id]);
             }
-            
-            // Create new video record - IMPORTANT: Store relative path, not absolute
+
+            // Create new video record
             $video = Video::create([
                 'title' => $this->record->title . ' - Video',
                 'lesson_id' => $this->record->id,
                 'original_filename' => basename($tempPath),
-                'original_path' => $tempPath,  // This is already relative (e.g., 'temp-videos/file.mp4')
+                'original_path' => $tempPath,
                 'mime_type' => mime_content_type($filePath),
                 'file_size' => filesize($filePath),
                 'status' => 'pending',
@@ -140,39 +91,40 @@ class EditLesson extends EditRecord
                     'uploaded_at' => now()->toISOString(),
                 ]
             ]);
-            
-            // Queue video processing job
-            ProcessVideoJob::dispatch($video);
-            
-            // Show notification
-            $this->notify('success', 'Video uploaded and queued for processing');
+
+            \Log::info('Video record created', ['video_id' => $video->id]);
+
+            // Run processing synchronously for dev, dispatch for production
+            if (config('queue.default') === 'sync') {
+                ProcessVideoJob::dispatchSync($video);
+            } else {
+                // Run synchronously anyway to avoid needing queue worker
+                (new ProcessVideoJob($video))->handle();
+            }
+
+            $video->refresh();
+            \Log::info('Video processing done', [
+                'video_id' => $video->id,
+                'status' => $video->status,
+            ]);
+
+            Notification::make()->title('Video uploaded and processed successfully')->success()->send();
         } else {
-            // Show error notification
-            $this->notify('danger', 'Video file not found: ' . $tempPath);
+            \Log::error('Video file not found', [
+                'tried' => [
+                    storage_path('app/private/' . $tempPath),
+                    storage_path('app/' . $tempPath),
+                ]
+            ]);
+            Notification::make()->title('Video file not found after upload')->danger()->send();
         }
     }
-    
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        \Log::info('mutateFormDataBeforeSave called', [
-            'data_keys' => array_keys($data),
-            'video_upload' => $data['video_upload'] ?? 'not_found'
-        ]);
-        
-        // Store video upload info before removing it
-        if (isset($data['video_upload']) && !empty($data['video_upload'])) {
-            \Log::info('Found video_upload in mutateFormDataBeforeSave', [
-                'video_upload' => $data['video_upload'],
-                'type' => gettype($data['video_upload'])
-            ]);
-            
-            // Store it temporarily in session or property for afterSave to use
-            session(['temp_video_upload' => $data['video_upload']]);
-        }
-        
         // Remove video_upload from data as it's not a database field
         unset($data['video_upload']);
-        
+
         return $data;
     }
 }

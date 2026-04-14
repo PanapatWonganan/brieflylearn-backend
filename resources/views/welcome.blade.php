@@ -290,12 +290,28 @@
             <div class="info-card">
                 <div class="info-icon">📚</div>
                 <div class="info-label">Courses</div>
-                <div class="info-value">{{ \App\Models\Course::count() }}</div>
+                <div class="info-value">
+                    @php
+                        try {
+                            echo \App\Models\Course::count();
+                        } catch (\Exception $e) {
+                            echo '—';
+                        }
+                    @endphp
+                </div>
             </div>
             <div class="info-card">
                 <div class="info-icon">👥</div>
                 <div class="info-label">Users</div>
-                <div class="info-value">{{ \App\Models\User::count() }}</div>
+                <div class="info-value">
+                    @php
+                        try {
+                            echo \App\Models\User::count();
+                        } catch (\Exception $e) {
+                            echo '—';
+                        }
+                    @endphp
+                </div>
             </div>
         </div>
 

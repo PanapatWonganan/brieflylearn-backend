@@ -66,12 +66,13 @@ class UserPlant extends Model
     }
 
     // รดน้ำพืช
+    // NOTE: Activity logging should be done by the caller within a transaction context
     public function water(): self
     {
         $this->last_watered_at = now();
         $this->next_water_at = now()->addDay(); // รดน้ำทุกวัน
         $this->health = min(100, $this->health + 10); // เพิ่มสุขภาพ
-        
+
         // เพิ่มคะแนนการเติบโตตามความหายาก
         $basePoints = 10;
         $rarityBonus = match($this->plantType->rarity) {
@@ -82,26 +83,11 @@ class UserPlant extends Model
             default => 0
         };
         $this->growth_points += ($basePoints + $rarityBonus);
-        
+
         // ตรวจสอบการเติบโตไปขั้นถัดไป
         $this->checkGrowthProgress();
-        
-        $this->save();
 
-        // บันทึกกิจกรรม
-        GardenActivity::create([
-            'user_id' => $this->user_id,
-            'garden_id' => $this->garden_id,
-            'activity_type' => 'water',
-            'target_type' => 'plant',
-            'target_id' => $this->id,
-            'xp_earned' => 5,
-            'star_seeds_earned' => 2,
-            'activity_data' => [
-                'plant_name' => $this->getDisplayName(),
-                'stage_after' => $this->stage
-            ]
-        ]);
+        $this->save();
 
         return $this;
     }

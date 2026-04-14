@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class UserGarden extends Model
 {
@@ -76,15 +78,44 @@ class UserGarden extends Model
     // เพิ่ม XP และตรวจสอบ level up
     public function addXp(int $xp): self
     {
+        $oldLevel = $this->level;
         $this->xp += $xp;
-        
-        // เช็ค level up
-        while ($this->can_level_up) {
+
+        // เช็ค level up with safety guard to prevent infinite loop
+        $maxIterations = 100;
+        $iterations = 0;
+        while ($this->can_level_up && $iterations < $maxIterations) {
+            $xpForNext = $this->xp_for_next_level;
+
+            // Safety check: ensure xp_for_next_level is positive
+            if ($xpForNext <= 0) {
+                Log::error('Invalid xp_for_next_level in addXp', [
+                    'garden_id' => $this->id,
+                    'level' => $this->level,
+                    'xp' => $this->xp,
+                    'xp_for_next_level' => $xpForNext
+                ]);
+                break;
+            }
+
             $this->level++;
-            $this->xp -= $this->xp_for_next_level;
+            $this->xp -= $xpForNext;
+            $iterations++;
         }
-        
+
         $this->save();
+
+        // Send level up email if leveled up
+        $newLevel = $this->level;
+        if ($newLevel > $oldLevel) {
+            try {
+                $user = $this->user;
+                Mail::to($user->email)->send(new \App\Mail\LevelUpMail($user, $newLevel));
+            } catch (\Exception $e) {
+                Log::warning('Failed to send level up email', ['user_id' => $this->user_id, 'new_level' => $newLevel, 'error' => $e->getMessage()]);
+            }
+        }
+
         return $this;
     }
 

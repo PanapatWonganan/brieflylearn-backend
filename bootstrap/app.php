@@ -15,11 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'cors' => \Fruitcake\Cors\HandleCors::class,
             'force.https' => \App\Http\Middleware\ForceHttps::class,
+            'auth.api' => \App\Http\Middleware\ApiTokenAuth::class,
         ]);
-        
+
         // Trust proxies for Railway
         $middleware->trustProxies(at: '*');
-        
+
         // Apply ForceHttps to web routes - always in this environment
         $middleware->web(append: [
             \App\Http\Middleware\ForceHttps::class,

@@ -32,7 +32,12 @@ class Video extends Model
         'file_size' => 'integer',
         'duration_seconds' => 'integer'
     ];
-    
+
+    protected $appends = [
+        'formatted_duration',
+        'formatted_size'
+    ];
+
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);

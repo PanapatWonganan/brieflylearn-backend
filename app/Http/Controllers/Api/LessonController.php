@@ -6,52 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use App\Models\Course;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class LessonController extends Controller
 {
     /**
-     * Get authenticated user from token
+     * Get authenticated user from middleware
      */
     private function getAuthenticatedUser(Request $request)
     {
-        $authHeader = $request->header('Authorization');
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
-            return null;
-        }
-
-        $token = substr($authHeader, 7); // Remove 'Bearer ' prefix
-        
-        try {
-            // Decode base64 token (same format as garden authentication)
-            $decoded = base64_decode($token);
-            if (!$decoded || !str_contains($decoded, '|')) {
-                return null;
-            }
-
-            list($userId, $tokenHash) = explode('|', $decoded, 2);
-            
-            // Find user
-            $user = \App\Models\User::find($userId);
-            if (!$user) {
-                return null;
-            }
-
-            return $user;
-        } catch (\Exception $e) {
-            \Log::warning('Authentication failed: ' . $e->getMessage());
-            return null;
-        }
-    }
-    
-    /**
-     * Return authentication error response
-     */
-    private function authError($message = 'Authentication required')
-    {
-        return response()->json([
-            'success' => false,
-            'message' => $message
-        ], 401);
+        return Auth::user() ?? $request->auth_user;
     }
 
     /**
@@ -155,23 +119,33 @@ class LessonController extends Controller
             ], 400);
         }
         
-        // Check if user can watch (for now, allow free lessons)
-        if (!$lesson->is_free) {
-            // TODO: Check if user has purchased the course
-            return response()->json([
-                'message' => 'This lesson requires course purchase'
-            ], 403);
-        }
-        
-        // Generate signed URL - use anonymous for free lessons for now
-        $expires = now()->addHours(2);
-        $userId = 'anonymous';
-        
-        // Try to get authenticated user if available
+        // Try to get authenticated user
         $user = $this->getAuthenticatedUser($request);
-        if ($user) {
-            $userId = $user->id;
+
+        // Check if user can watch (allow free lessons or enrolled users)
+        if (!$lesson->is_free) {
+            // Check if user is authenticated
+            if (!$user) {
+                return response()->json([
+                    'message' => 'Authentication required to access this lesson'
+                ], 401);
+            }
+
+            // Check if user has enrolled in the course
+            $hasEnrollment = $user->enrollments()
+                ->where('course_id', $lesson->course_id)
+                ->exists();
+
+            if (!$hasEnrollment) {
+                return response()->json([
+                    'message' => 'This lesson requires course enrollment. Please enroll in the course first.'
+                ], 403);
+            }
         }
+
+        // Generate signed URL - use anonymous for free lessons
+        $expires = now()->addHours(2);
+        $userId = $user ? $user->id : 'anonymous';
         
         $token = hash_hmac(
             'sha256',

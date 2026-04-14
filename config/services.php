@@ -35,4 +35,16 @@ return [
         ],
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+    ],
+
+    'meta' => [
+        'pixel_id' => env('META_PIXEL_ID'),
+        'access_token' => env('META_CONVERSIONS_API_TOKEN'),
+        'api_version' => env('META_API_VERSION', 'v25.0'),
+        'test_event_code' => env('META_TEST_EVENT_CODE'),
+    ],
+
 ];

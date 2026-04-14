@@ -3,47 +3,40 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\EnrollCourseRequest;
+use App\Mail\CourseEnrollmentMail;
 use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\User;
+use App\Services\MetaConversionsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class EnrollmentController extends Controller
 {
     public function getMyEnrollments(Request $request)
     {
         try {
-            // Get user from token (simple implementation)
-            $token = $request->header('Authorization');
-            if (!$token) {
+            // Get authenticated user from middleware
+            $user = Auth::user() ?? $request->auth_user;
+
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No token provided',
+                    'message' => 'User not authenticated',
                     'enrollments' => []
-                ]);
+                ], 401);
             }
 
-            // Remove "Bearer " prefix if present
-            $token = str_replace('Bearer ', '', $token);
-            
-            // Decode token
-            $decoded = base64_decode($token);
-            $parts = explode('|', $decoded);
-            
-            if (count($parts) !== 2) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid token format',
-                    'enrollments' => []
-                ]);
-            }
-
-            $userId = $parts[0];
+            $userId = $user->id;
 
             // Get all courses (simulate enrollment - everyone enrolled in all courses)
-            $courses = Course::with('instructor:id,full_name')
+            $courses = Course::with(['instructor:id,full_name', 'lessons'])
                 ->select('id', 'title', 'description', 'instructor_id', 'price', 'level')
                 ->take(10)
                 ->get()
@@ -82,25 +75,62 @@ class EnrollmentController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to fetch enrollments', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch enrollments: ' . $e->getMessage(),
+                'message' => 'ไม่สามารถดึงข้อมูลการลงทะเบียนได้ กรุณาลองใหม่อีกครั้ง',
                 'enrollments' => []
             ], 500);
         }
     }
 
-    public function enrollInCourse(Request $request)
+    public function enrollInCourse(EnrollCourseRequest $request)
     {
         try {
-            $request->validate([
-                'course_id' => 'required|exists:courses,id'
-            ]);
+            $validated = $request->validated();
+
+            // Get authenticated user
+            $user = Auth::user() ?? $request->auth_user;
 
             // In a real app, you'd create enrollment records
             // For now, just return success (auto-enrollment system)
 
-            $course = Course::find($request->course_id);
+            $course = Course::with('instructor:id,full_name')->find($validated['course_id']);
+
+            // Get total lessons count for the course
+            $totalLessons = Lesson::where('course_id', $course->id)->count();
+
+            // Prepare course data for email
+            $courseData = (object)[
+                'id' => $course->id,
+                'title' => $course->title,
+                'description' => $course->description,
+                'level' => $course->level,
+                'instructor' => $course->instructor ? $course->instructor->full_name : null,
+                'total_lessons' => $totalLessons,
+            ];
+
+            // Send enrollment confirmation email (wrapped in try-catch)
+            if ($user) {
+                try {
+                    Mail::to($user->email)->send(new CourseEnrollmentMail($user, $courseData));
+                } catch (\Exception $e) {
+                    Log::warning('Failed to send course enrollment email', [
+                        'user_id' => $user->id,
+                        'course_id' => $course->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Don't fail enrollment if email fails
+                }
+            }
+
+            // Track enrollment with Meta Conversions API
+            try {
+                $metaConversions = app(MetaConversionsService::class);
+                $metaConversions->trackEnrollment($user, $request, $course, $request->input('meta_event_id'));
+            } catch (\Exception $e) {
+                Log::warning('Meta CAPI: AddToCart failed', ['error' => $e->getMessage()]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -114,9 +144,10 @@ class EnrollmentController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Enrollment failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Enrollment failed: ' . $e->getMessage()
+                'message' => 'การลงทะเบียนล้มเหลว กรุณาลองใหม่อีกครั้ง'
             ], 500);
         }
     }

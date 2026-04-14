@@ -154,8 +154,8 @@ class GardenActivity extends Model
         string $userId,
         string $gardenId,
         string $activityType,
-        string $targetType = null,
-        string $targetId = null,
+        ?string $targetType = null,
+        ?string $targetId = null,
         int $xpEarned = 0,
         int $starSeedsEarned = 0,
         array $activityData = []
