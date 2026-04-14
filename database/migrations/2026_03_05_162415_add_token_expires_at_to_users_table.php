@@ -12,7 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->timestamp('token_expires_at')->nullable()->after('api_token');
+            if (!Schema::hasColumn('users', 'api_token')) {
+                $table->string('api_token', 80)->nullable()->after('remember_token');
+            }
+            $table->timestamp('token_expires_at')->nullable()->after('remember_token');
         });
     }
 
