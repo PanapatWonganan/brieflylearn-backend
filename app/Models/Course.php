@@ -43,6 +43,22 @@ class Course extends Model
     }
 
     /**
+     * Coerce null values to sane defaults for NOT NULL columns before save.
+     * Prevents SQL integrity errors when forms submit empty numeric fields.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $course): void {
+            $course->rating = $course->rating ?? 0;
+            $course->total_students = $course->total_students ?? 0;
+            $course->total_lessons = $course->total_lessons ?? 0;
+            $course->duration_weeks = $course->duration_weeks ?? 0;
+            $course->price = $course->price ?? 0;
+            $course->is_published = $course->is_published ?? false;
+        });
+    }
+
+    /**
      * Relationships
      */
     public function instructor()
