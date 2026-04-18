@@ -122,7 +122,7 @@ class LessonController extends Controller
         // Try to get authenticated user
         $user = $this->getAuthenticatedUser($request);
 
-        // Check if user can watch (allow free lessons or enrolled users)
+        // Check if user can watch (allow free lessons or paid enrolled users)
         if (!$lesson->is_free) {
             // Check if user is authenticated
             if (!$user) {
@@ -131,15 +131,28 @@ class LessonController extends Controller
                 ], 401);
             }
 
-            // Check if user has enrolled in the course
-            $hasEnrollment = $user->enrollments()
+            // Look up latest enrollment for this course
+            $enrollment = $user->enrollments()
                 ->where('course_id', $lesson->course_id)
-                ->exists();
+                ->orderByDesc('enrolled_at')
+                ->first();
 
-            if (!$hasEnrollment) {
+            if (!$enrollment) {
                 return response()->json([
-                    'message' => 'This lesson requires course enrollment. Please enroll in the course first.'
+                    'message' => 'This lesson requires course enrollment. Please enroll in the course first.',
+                    'code' => 'enrollment_required',
                 ], 403);
+            }
+
+            // Require a completed payment for paid courses.
+            $coursePrice = (float) ($lesson->course?->price ?? 0);
+            if ($coursePrice > 0 && $enrollment->payment_status !== 'completed') {
+                return response()->json([
+                    'message' => 'กรุณาชำระเงินก่อนเข้าเรียนคอร์สนี้',
+                    'code' => 'payment_required',
+                    'order_no' => $enrollment->order_no,
+                    'payment_status' => $enrollment->payment_status,
+                ], 402);
             }
         }
 

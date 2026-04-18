@@ -24,6 +24,9 @@ class Enrollment extends Model
         'payment_date',
         'payment_method',
         'transaction_id',
+        'order_no',
+        'payment_gateway',
+        'gateway_response',
     ];
 
     protected function casts(): array
@@ -34,7 +37,13 @@ class Enrollment extends Model
             'progress' => 'decimal:2',
             'amount_paid' => 'decimal:2',
             'payment_date' => 'datetime',
+            'gateway_response' => 'array',
         ];
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->payment_status === 'completed';
     }
 
     /**

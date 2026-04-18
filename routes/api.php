@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\CommunityGardenController;
 use App\Http\Controllers\Api\AdvancedPlantController;
 use App\Http\Controllers\Api\SeasonalEventController;
 use App\Http\Controllers\Api\EnrollmentController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProgressController;
 use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\BlogController;
@@ -216,3 +217,16 @@ Route::post('/v1/contact', [ContactController::class, 'store']);
 
 // Email subscription routes (public — accessed from email links)
 Route::get('/v1/email/unsubscribe', [App\Http\Controllers\Api\EmailSubscriptionController::class, 'unsubscribe']);
+
+// Payment routes (Pay Solutions / ThaiePay)
+Route::prefix('v1/payments/paysolutions')->group(function () {
+    // Public — gateway callback + browser return
+    Route::post('/postback', [PaymentController::class, 'postback']);
+    Route::match(['get', 'post'], '/return', [PaymentController::class, 'return']);
+
+    // Authenticated — checkout + status poll
+    Route::middleware('auth.api')->group(function () {
+        Route::post('/checkout', [PaymentController::class, 'checkout']);
+        Route::get('/status', [PaymentController::class, 'status']);
+    });
+});
