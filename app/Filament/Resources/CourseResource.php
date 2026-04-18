@@ -4,7 +4,9 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CourseResource\Pages;
 use App\Filament\Resources\CourseResource\RelationManagers;
+use App\Models\Category;
 use App\Models\Course;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -37,14 +39,31 @@ class CourseResource extends Resource
                 Forms\Components\Textarea::make('description')
                     ->required()
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('instructor_id')
+                Forms\Components\Select::make('instructor_id')
+                    ->label('ผู้สอน')
                     ->required()
-                    ->maxLength(36),
-                Forms\Components\TextInput::make('category_id')
+                    ->searchable()
+                    ->preload()
+                    ->options(fn () => User::query()
+                        ->where('role', 'admin')
+                        ->orWhere('role', 'instructor')
+                        ->pluck('full_name', 'id')
+                        ->toArray()),
+                Forms\Components\Select::make('category_id')
+                    ->label('หมวดหมู่')
                     ->required()
-                    ->maxLength(36),
-                Forms\Components\TextInput::make('level')
-                    ->required(),
+                    ->searchable()
+                    ->preload()
+                    ->relationship('category', 'name'),
+                Forms\Components\Select::make('level')
+                    ->label('ระดับ')
+                    ->required()
+                    ->options([
+                        'beginner' => 'Beginner',
+                        'intermediate' => 'Intermediate',
+                        'advanced' => 'Advanced',
+                    ])
+                    ->default('beginner'),
                 Forms\Components\TextInput::make('duration_weeks')
                     ->required()
                     ->numeric(),
