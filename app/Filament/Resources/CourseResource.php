@@ -60,7 +60,8 @@ class CourseResource extends Resource
                     ->maxLength(500),
                 Forms\Components\Toggle::make('is_published'),
                 Forms\Components\TextInput::make('rating')
-                    ->numeric(),
+                    ->numeric()
+                    ->default(0),
                 Forms\Components\TextInput::make('total_students')
                     ->numeric()
                     ->default(0),
