@@ -68,13 +68,13 @@
     </div>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/dashboard" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/dashboard" class="button">
             ดูรายละเอียดเพิ่มเติม
         </a>
     </div>
 
     <p style="margin-top: 30px;">
         เก่งมาก! รักษาฟอร์มนี้ไปต่อนะ<br>
-        <strong>ทีมงาน BrieflyLearn</strong>
+        <strong>ทีมงาน Antiparallel</strong>
     </p>
 @endsection

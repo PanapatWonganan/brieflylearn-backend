@@ -1,13 +1,13 @@
 @extends('emails.layout')
 
-@section('title', 'รีเซ็ตรหัสผ่าน BrieflyLearn')
+@section('title', 'รีเซ็ตรหัสผ่าน Antiparallel')
 
 @section('content')
     <h1>รีเซ็ตรหัสผ่านของคุณ</h1>
 
     <p>สวัสดี {{ $user->full_name }},</p>
 
-    <p>เราได้รับคำขอให้รีเซ็ตรหัสผ่านสำหรับบัญชี BrieflyLearn ของคุณ หากคุณเป็นผู้ทำการขอรีเซ็ตรหัสผ่าน กรุณาคลิกที่ปุ่มด้านล่างเพื่อดำเนินการต่อ</p>
+    <p>เราได้รับคำขอให้รีเซ็ตรหัสผ่านสำหรับบัญชี Antiparallel ของคุณ หากคุณเป็นผู้ทำการขอรีเซ็ตรหัสผ่าน กรุณาคลิกที่ปุ่มด้านล่างเพื่อดำเนินการต่อ</p>
 
     <div class="button-container">
         <a href="{{ $resetUrl }}" class="button">
@@ -40,6 +40,6 @@
 
     <p style="margin-top: 30px;">
         หากคุณต้องการความช่วยเหลือ กรุณาติดต่อทีมสนับสนุนของเรา<br>
-        <strong>ทีมงาน BrieflyLearn</strong>
+        <strong>ทีมงาน Antiparallel</strong>
     </p>
 @endsection

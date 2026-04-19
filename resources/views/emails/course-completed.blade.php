@@ -34,13 +34,13 @@
     </ul>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/courses/recommended" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/courses/recommended" class="button">
             ดูคอร์สแนะนำ
         </a>
     </div>
 
     <p style="margin-top: 30px;">
         ขอแสดงความยินดี!<br>
-        <strong>ทีมงาน BrieflyLearn</strong>
+        <strong>ทีมงาน Antiparallel</strong>
     </p>
 @endsection

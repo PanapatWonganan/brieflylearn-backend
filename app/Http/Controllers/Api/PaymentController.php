@@ -96,7 +96,9 @@ class PaymentController extends Controller
             $enrollment->payment_status = 'pending';
             $enrollment->payment_gateway = 'paysolutions';
             $enrollment->payment_method = 'paysolutions';
-            $enrollment->order_no = $enrollment->order_no ?: $this->pay->generateOrderNo();
+            // Always regenerate order_no on a new checkout attempt — Pay Solutions
+            // rejects any refno that has been previously sent to the hosted page.
+            $enrollment->order_no = $this->pay->generateOrderNo();
             $enrollment->save();
         }
 
@@ -104,7 +106,7 @@ class PaymentController extends Controller
 
         // Fire-and-forget "awaiting payment" email
         try {
-            Mail::to($user->email)->send(new PaymentInitiatedMail($enrollment));
+            Mail::to($user->email)->queue(new PaymentInitiatedMail($enrollment));
         } catch (\Throwable $e) {
             Log::warning('PaymentInitiatedMail failed', ['error' => $e->getMessage()]);
         }
@@ -151,7 +153,14 @@ class PaymentController extends Controller
      */
     public function return(Request $request)
     {
-        $orderNo = (string) $request->query('refno', $request->query('orderNo', ''));
+        // Paysolutions may return via GET (query string) OR POST (form body),
+        // and the key name varies (refno / orderNo / order_no). Read from both.
+        $orderNo = (string) (
+            $request->input('refno')
+                ?? $request->input('orderNo')
+                ?? $request->input('order_no')
+                ?? ''
+        );
         $frontend = rtrim((string) config('app.frontend_url', 'https://brieflylearn.com'), '/');
 
         if ($orderNo === '') {
@@ -215,6 +224,20 @@ class PaymentController extends Controller
                 return;
             }
 
+            // Race-condition guard: once an enrollment has been marked
+            // completed (typically via /postback which carries the authoritative
+            // status=CP body from Paysolutions), a later /return call with an
+            // ambiguous/empty body must NEVER downgrade it back to failed.
+            // This protects users from losing access if the return redirect
+            // lands after the postback and the inquiry API is flaky.
+            if ($enrollment->payment_status === 'completed' && ! $isSuccess) {
+                Log::info('Paysolutions: ignoring late non-success signal for already-completed enrollment', [
+                    'order_no' => $orderNo,
+                    'enrollment_id' => $enrollment->id,
+                ]);
+                return;
+            }
+
             $enrollment->gateway_response = $payload;
             $enrollment->transaction_id = (string) ($payload['tranRef']
                 ?? $payload['transactionId']
@@ -242,10 +265,10 @@ class PaymentController extends Controller
 
             try {
                 if ($isSuccess) {
-                    Mail::to($enrollment->user->email)->send(new PaymentSuccessMail($enrollment));
+                    Mail::to($enrollment->user->email)->queue(new PaymentSuccessMail($enrollment));
                 } else {
                     $reason = (string) ($payload['message'] ?? $payload['responseMessage'] ?? '');
-                    Mail::to($enrollment->user->email)->send(new PaymentFailedMail($enrollment, $reason ?: null));
+                    Mail::to($enrollment->user->email)->queue(new PaymentFailedMail($enrollment, $reason ?: null));
                 }
             } catch (\Throwable $e) {
                 Log::warning('Payment result email failed', [

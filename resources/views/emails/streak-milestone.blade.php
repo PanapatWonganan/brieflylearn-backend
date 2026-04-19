@@ -92,13 +92,13 @@
 
         <h2>คุณคือแรงบันดาลใจ! 💫</h2>
 
-        <p>เราอยากขอบคุณที่คุณเป็นส่วนหนึ่งของชุมชน BrieflyLearn ความทุ่มเทของคุณเป็นตัวอย่างที่ดีให้กับผู้เรียนทุกคน</p>
+        <p>เราอยากขอบคุณที่คุณเป็นส่วนหนึ่งของชุมชน Antiparallel ความทุ่มเทของคุณเป็นตัวอย่างที่ดีให้กับผู้เรียนทุกคน</p>
 
         <p>รักษา streak ต่อไปเพื่อรับโบนัส XP พิเศษทุก 10 วัน!</p>
     @endif
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/dashboard" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/dashboard" class="button">
             ดูรางวัลทั้งหมด
         </a>
     </div>
@@ -112,6 +112,6 @@
 
     <p style="margin-top: 30px;">
         ภูมิใจในตัวคุณมากๆ!<br>
-        <strong>ทีมงาน BrieflyLearn</strong>
+        <strong>ทีมงาน Antiparallel</strong>
     </p>
 @endsection

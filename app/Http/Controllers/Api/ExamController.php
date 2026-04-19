@@ -266,7 +266,7 @@ class ExamController extends Controller
 
             // Send exam result email
             try {
-                Mail::to($user->email)->send(new \App\Mail\ExamResultMail($user, $exam, $examResult));
+                Mail::to($user->email)->queue(new \App\Mail\ExamResultMail($user, $exam, $examResult));
             } catch (\Exception $e) {
                 Log::warning('Failed to send exam result email', ['user_id' => $user->id, 'exam_id' => $exam->id, 'error' => $e->getMessage()]);
             }

@@ -51,7 +51,7 @@
     <p>รางวัลแต่ละอันแสดงถึงความก้าวหน้าและความมุ่งมั่นของคุณในการเรียนรู้ มันไม่ใช่แค่ตัวเลข แต่เป็นหลักฐานของการพัฒนาตนเองอย่างต่อเนื่อง</p>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/achievements" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/achievements" class="button">
             ดูรางวัลทั้งหมด
         </a>
     </div>
@@ -62,6 +62,6 @@
 
     <p style="margin-top: 30px;">
         ทำต่อไปเลย! คุณกำลังทำได้ดีมาก<br>
-        <strong>ทีมงาน BrieflyLearn</strong>
+        <strong>ทีมงาน Antiparallel</strong>
     </p>
 @endsection

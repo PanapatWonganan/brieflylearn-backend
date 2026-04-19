@@ -59,9 +59,9 @@ class AuthController extends Controller
 
             // Send welcome email (wrapped in try-catch to prevent failures)
             try {
-                Mail::to($user->email)->send(new WelcomeMail($user));
+                Mail::to($user->email)->queue(new WelcomeMail($user));
             } catch (\Exception $e) {
-                Log::warning('Failed to send welcome email', [
+                Log::warning('Failed to queue welcome email', [
                     'user_id' => $user->id,
                     'email' => $user->email,
                     'error' => $e->getMessage()
@@ -425,9 +425,9 @@ class AuthController extends Controller
             // Send welcome email for new users (if just created)
             if ($user->wasRecentlyCreated) {
                 try {
-                    Mail::to($user->email)->send(new WelcomeMail($user));
+                    Mail::to($user->email)->queue(new WelcomeMail($user));
                 } catch (\Exception $e) {
-                    Log::warning('Failed to send welcome email for Google user', [
+                    Log::warning('Failed to queue welcome email for Google user', [
                         'user_id' => $user->id,
                         'email' => $user->email,
                         'error' => $e->getMessage()

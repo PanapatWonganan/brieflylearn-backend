@@ -18,13 +18,13 @@
     <p>หากคุณได้ทำรายการแล้ว ระบบจะอัปเดตสถานะภายในไม่กี่นาที และคุณจะได้รับอีเมลยืนยันอีกครั้ง</p>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/courses/{{ $course->id }}" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/courses/{{ $course->id }}" class="button">
             ดูคำสั่งซื้อของคุณ
         </a>
     </div>
 
     <p style="margin-top: 30px;">
         หากมีคำถาม กรุณาติดต่อทีมซัพพอร์ตได้ตลอดเวลา<br>
-        <strong>ทีมงาน BrieflyLearn</strong>
+        <strong>ทีมงาน Antiparallel</strong>
     </p>
 @endsection

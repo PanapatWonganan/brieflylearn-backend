@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ยกเลิกการรับอีเมล — BrieflyLearn</title>
+    <title>ยกเลิกการรับอีเมล — Antiparallel</title>
     <style>
         body {
             margin: 0;
@@ -55,7 +55,7 @@
         <div class="icon">{{ $success ? '✓' : '✕' }}</div>
         <h1>{{ $success ? 'เรียบร้อย' : 'เกิดข้อผิดพลาด' }}</h1>
         <p>{{ $message }}</p>
-        <a href="{{ $frontendUrl }}" class="button">กลับสู่ BrieflyLearn</a>
+        <a href="{{ $frontendUrl }}" class="button">กลับสู่ Antiparallel</a>
     </div>
 </body>
 </html>

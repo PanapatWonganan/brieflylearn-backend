@@ -19,13 +19,13 @@
     </div>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/courses/{{ $course->id }}/checkout" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/courses/{{ $course->id }}/checkout" class="button">
             ลองชำระอีกครั้ง
         </a>
     </div>
 
     <p style="margin-top: 30px;">
         หากปัญหายังคงอยู่ กรุณาติดต่อทีมซัพพอร์ต เราพร้อมช่วยเหลือคุณ<br>
-        <strong>ทีมงาน BrieflyLearn</strong>
+        <strong>ทีมงาน Antiparallel</strong>
     </p>
 @endsection

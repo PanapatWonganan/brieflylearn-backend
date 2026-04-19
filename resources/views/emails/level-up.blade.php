@@ -40,13 +40,13 @@
     <p>คุณกำลังเดินหน้าไปสู่เป้าหมายการเรียนรู้ ระดับถัดไปคือ Level {{ $newLevel + 1 }} เก็บ XP อีก {{ ($newLevel + 1) * 1000 - ($user->total_xp ?? 0) }} แต้มเพื่อไปให้ถึง!</p>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/garden" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/garden" class="button">
             ดูสวนและรางวัลของคุณ
         </a>
     </div>
 
     <p style="margin-top: 30px;">
         เรียนต่อไป คุณทำได้ดีมาก!<br>
-        <strong>ทีมงาน BrieflyLearn</strong>
+        <strong>ทีมงาน Antiparallel</strong>
     </p>
 @endsection

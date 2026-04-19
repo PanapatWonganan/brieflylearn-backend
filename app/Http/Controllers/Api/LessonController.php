@@ -19,18 +19,77 @@ class LessonController extends Controller
     }
 
     /**
-     * Get all lessons for a course
+     * Optionally resolve a user from a Bearer token on a public route.
+     *
+     * Mirrors `ApiTokenAuth::handle()` but returns `null` silently when the
+     * header is absent or invalid, so public endpoints continue to serve
+     * guests while paying users get richer responses.
      */
-    public function getCourseLessons($courseId)
+    private function resolveBearerUser(Request $request)
+    {
+        $authHeader = $request->header('Authorization');
+        if (! $authHeader) {
+            return null;
+        }
+
+        $token = str_replace('Bearer ', '', $authHeader);
+        $decoded = base64_decode($token, true);
+        if ($decoded === false) {
+            return null;
+        }
+
+        $parts = explode('|', $decoded);
+        if (count($parts) !== 2) {
+            return null;
+        }
+
+        [$userId, $tokenHash] = $parts;
+        $user = \App\Models\User::find($userId);
+        if (! $user || $user->api_token !== $tokenHash) {
+            return null;
+        }
+        if (isset($user->token_expires_at) && $user->token_expires_at && now()->isAfter($user->token_expires_at)) {
+            return null;
+        }
+
+        return $user;
+    }
+
+    /**
+     * Get all lessons for a course.
+     *
+     * This endpoint is in the public route group so guest previews work, but we
+     * honor an optional Bearer token to surface purchase state for logged-in
+     * users. That lets the frontend render paid lessons as clickable links and
+     * flip the hero CTA from "buy" to "start learning" once the user paid.
+     */
+    public function getCourseLessons(Request $request, $courseId)
     {
         $course = Course::with(['lessons' => function($query) {
             $query->with('primaryVideo')
                   ->orderBy('order_index', 'asc');
         }])->findOrFail($courseId);
-        
-        $lessons = $course->lessons->map(function ($lesson) {
+
+        // Optionally resolve the caller and compute purchase state for the course.
+        $userHasPaidAccess = false;
+        $user = $this->getAuthenticatedUser($request) ?: $this->resolveBearerUser($request);
+        if ($user) {
+            $enrollment = $user->enrollments()
+                ->where('course_id', $course->id)
+                ->orderByDesc('enrolled_at')
+                ->first();
+
+            if ($enrollment) {
+                $coursePrice = (float) ($course->price ?? 0);
+                $userHasPaidAccess = $coursePrice <= 0
+                    ? true
+                    : $enrollment->payment_status === 'completed';
+            }
+        }
+
+        $lessons = $course->lessons->map(function ($lesson) use ($userHasPaidAccess) {
             $video = $lesson->primaryVideo;
-            
+
             return [
                 'id' => $lesson->id,
                 'title' => $lesson->title,
@@ -38,6 +97,7 @@ class LessonController extends Controller
                 'duration_minutes' => $lesson->duration_minutes,
                 'order_index' => $lesson->order_index,
                 'is_free' => $lesson->is_free,
+                'locked' => ! ($lesson->is_free || $userHasPaidAccess),
                 'video_url' => $lesson->video_url, // External URL if any
                 'video' => $video ? [
                     'id' => $video->id,
@@ -49,26 +109,58 @@ class LessonController extends Controller
                 'created_at' => $lesson->created_at,
             ];
         });
-        
+
         return response()->json([
             'course' => [
                 'id' => $course->id,
                 'title' => $course->title,
                 'description' => $course->description,
+                'price' => $course->price,
+                'original_price' => $course->original_price,
+                'level' => $course->level,
+                'duration_minutes' => $course->duration_minutes,
             ],
             'lessons' => $lessons,
-            'total_lessons' => $lessons->count()
+            'total_lessons' => $lessons->count(),
+            'user_has_paid_access' => $userHasPaidAccess,
         ]);
     }
     
     /**
      * Get single lesson with video details
      */
-    public function show($lessonId)
+    public function show(Request $request, $lessonId)
     {
         $lesson = Lesson::with(['primaryVideo', 'course'])->findOrFail($lessonId);
         $video = $lesson->primaryVideo;
-        
+
+        // Determine whether the requesting user is allowed to watch:
+        //  - Free lessons are always watchable.
+        //  - Otherwise require a completed enrollment for the parent course.
+        //  - Courses with price = 0 unlock once an enrollment row exists.
+        //
+        // NOTE: This endpoint is mounted in the public route group (no auth.api
+        // middleware) so that course/lesson previews work for guests. We still
+        // honor a Bearer token when the caller provides one, so logged-in
+        // purchasers get `can_watch: true` for their paid lessons.
+        $canWatch = (bool) $lesson->is_free;
+        if (! $canWatch) {
+            $user = $this->getAuthenticatedUser($request) ?: $this->resolveBearerUser($request);
+            if ($user) {
+                $enrollment = $user->enrollments()
+                    ->where('course_id', $lesson->course_id)
+                    ->orderByDesc('enrolled_at')
+                    ->first();
+
+                if ($enrollment) {
+                    $coursePrice = (float) ($lesson->course?->price ?? 0);
+                    $canWatch = $coursePrice <= 0
+                        ? true
+                        : $enrollment->payment_status === 'completed';
+                }
+            }
+        }
+
         $lessonData = [
             'id' => $lesson->id,
             'title' => $lesson->title,
@@ -82,7 +174,7 @@ class LessonController extends Controller
                 'title' => $lesson->course->title,
             ],
             'video' => null,
-            'can_watch' => $lesson->is_free, // In production, check user's purchase status
+            'can_watch' => $canWatch,
         ];
         
         if ($video) {

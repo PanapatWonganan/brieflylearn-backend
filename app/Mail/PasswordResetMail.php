@@ -26,7 +26,7 @@ class PasswordResetMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'รีเซ็ตรหัสผ่าน BrieflyLearn',
+            subject: 'รีเซ็ตรหัสผ่าน Antiparallel',
         );
     }
 

@@ -267,7 +267,7 @@ class CourseIntegrationController extends Controller
 
             // Send course completed email
             try {
-                Mail::to($user->email)->send(new \App\Mail\CourseCompletedMail($user, $course));
+                Mail::to($user->email)->queue(new \App\Mail\CourseCompletedMail($user, $course));
             } catch (\Exception $e) {
                 Log::warning('Failed to send course completed email', ['user_id' => $user->id, 'course_id' => $course->id, 'error' => $e->getMessage()]);
             }

@@ -20,7 +20,7 @@
         </div>
 
         <div class="button-container">
-            <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/dashboard" class="button">
+            <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/dashboard" class="button">
                 กลับมาเรียนต่อ
             </a>
         </div>
@@ -30,7 +30,7 @@
 
         <p>สวัสดี {{ $user->full_name }},</p>
 
-        <p>คุณไม่ได้เข้ามาใน BrieflyLearn มา 7 วันแล้ว ในช่วงนี้เรามีอะไรใหม่ๆ เยอะเลย!</p>
+        <p>คุณไม่ได้เข้ามาใน Antiparallel มา 7 วันแล้ว ในช่วงนี้เรามีอะไรใหม่ๆ เยอะเลย!</p>
 
         <h2>อัพเดทใหม่สำหรับคุณ:</h2>
 
@@ -48,7 +48,7 @@
         </div>
 
         <div class="button-container">
-            <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/whats-new" class="button">
+            <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/whats-new" class="button">
                 ดูอะไรใหม่
             </a>
         </div>
@@ -81,7 +81,7 @@
         </div>
 
         <div class="button-container">
-            <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/comeback" class="button">
+            <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/comeback" class="button">
                 กลับมาเริ่มใหม่
             </a>
         </div>
@@ -89,6 +89,6 @@
 
     <p style="margin-top: 30px;">
         เรารอคุณอยู่นะ!<br>
-        <strong>ทีมงาน BrieflyLearn</strong>
+        <strong>ทีมงาน Antiparallel</strong>
     </p>
 @endsection

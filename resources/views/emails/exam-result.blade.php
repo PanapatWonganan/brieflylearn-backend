@@ -44,7 +44,7 @@
         <p>คุณผ่านการทดสอบแล้ว! พร้อมที่จะก้าวไปสู่บทเรียนถัดไปหรือยัง?</p>
 
         <div class="button-container">
-            <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/courses/{{ $exam->course_id ?? '' }}/continue" class="button">
+            <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/courses/{{ $exam->course_id ?? '' }}/continue" class="button">
                 เรียนต่อ
             </a>
         </div>
@@ -53,7 +53,7 @@
         <p>การทดสอบเป็นส่วนหนึ่งของการเรียนรู้ ลองทบทวนเนื้อหาอีกครั้งและกลับมาทำแบบทดสอบใหม่ได้เสมอ</p>
 
         <div class="button-container">
-            <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/courses/{{ $exam->course_id ?? '' }}/review" class="button">
+            <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/courses/{{ $exam->course_id ?? '' }}/review" class="button">
                 ทบทวนเนื้อหา
             </a>
         </div>
@@ -61,6 +61,6 @@
 
     <p style="margin-top: 30px;">
         ขอให้โชคดี!<br>
-        <strong>ทีมงาน BrieflyLearn</strong>
+        <strong>ทีมงาน Antiparallel</strong>
     </p>
 @endsection

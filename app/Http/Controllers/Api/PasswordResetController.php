@@ -55,7 +55,7 @@ class PasswordResetController extends Controller
 
             // Send email with try-catch to prevent failure from breaking the flow
             try {
-                Mail::to($user->email)->send(new PasswordResetMail($user, $resetUrl));
+                Mail::to($user->email)->queue(new PasswordResetMail($user, $resetUrl));
             } catch (\Exception $e) {
                 Log::warning('Failed to send password reset email', [
                     'user_id' => $user->id,

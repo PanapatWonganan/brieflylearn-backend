@@ -113,7 +113,7 @@ class EnrollmentController extends Controller
             // Send enrollment confirmation email (wrapped in try-catch)
             if ($user) {
                 try {
-                    Mail::to($user->email)->send(new CourseEnrollmentMail($user, $courseData));
+                    Mail::to($user->email)->queue(new CourseEnrollmentMail($user, $courseData));
                 } catch (\Exception $e) {
                     Log::warning('Failed to send course enrollment email', [
                         'user_id' => $user->id,

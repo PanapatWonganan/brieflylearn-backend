@@ -188,7 +188,7 @@ class AchievementController extends Controller
 
                         // Send achievement earned email (wrapped in try-catch)
                         try {
-                            Mail::to($user->email)->send(new AchievementEarnedMail($user, $achievement));
+                            Mail::to($user->email)->queue(new AchievementEarnedMail($user, $achievement));
                         } catch (\Exception $e) {
                             Log::warning('Failed to send achievement earned email', [
                                 'user_id' => $user->id,

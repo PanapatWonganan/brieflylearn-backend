@@ -43,6 +43,12 @@ class PaysolutionsService
 
         $refno = $enrollment->order_no ?: $this->generateOrderNo();
 
+        // Only override `returnurl` for browser redirect. Keep `postbackurl`
+        // implicit so Paysolutions falls back to the merchant-dashboard default
+        // (which is already proven to reach our /postback endpoint successfully).
+        $apiBase = rtrim((string) config('app.url', 'https://api.brieflylearn.com'), '/');
+        $returnUrl = $apiBase . '/api/v1/payments/paysolutions/return';
+
         $fields = [
             'refno' => $refno,
             'merchantid' => (string) config('paysolutions.merchant_id'),
@@ -52,7 +58,10 @@ class PaysolutionsService
             'total' => number_format((float) $course->price, 2, '.', ''),
             'cc' => (string) config('paysolutions.currency', '00'),
             'lang' => (string) config('paysolutions.lang', 'TH'),
-            'customerref' => mb_substr((string) $user->id, 0, 10),
+            // Pay Solutions rejects strings matching internal merchant-ref patterns
+            // (e.g. 12-char hex). Use a short prefixed alphanumeric slug instead.
+            'customerref' => 'U' . mb_substr(str_replace('-', '', (string) $user->id), 0, 8),
+            'returnurl' => $returnUrl,
         ];
 
         return [
@@ -122,13 +131,23 @@ class PaysolutionsService
      */
     public function isSuccessResponse(array $data): bool
     {
-        // Common keys across Pay Solutions variants
-        $status = $data['status'] ?? $data['transactionStatus'] ?? $data['orderStatus'] ?? null;
+        // Common keys across Pay Solutions variants. "CP" = Captured/Paid (success),
+        // "C" = Completed, "00" = success on inquiry API, "COMPLETED"/"PAID"/"SUCCESS" on others.
+        $successCodes = ['C', 'CP', 'S', '00', 'SUCCESS', 'COMPLETED', 'PAID', 'APPROVED'];
 
+        $status = $data['status'] ?? $data['transactionStatus'] ?? $data['orderStatus'] ?? null;
         if (is_string($status)) {
-            $normalized = strtoupper(trim($status));
-            // "C" = completed/captured, "00" = success on some endpoints, "SUCCESS"
-            return in_array($normalized, ['C', '00', 'SUCCESS', 'COMPLETED', 'PAID'], true);
+            if (in_array(strtoupper(trim($status)), $successCodes, true)) {
+                return true;
+            }
+        }
+
+        // Some postbacks include a human-readable status name.
+        $statusName = $data['statusname'] ?? $data['statusName'] ?? null;
+        if (is_string($statusName)) {
+            if (in_array(strtoupper(trim($statusName)), $successCodes, true)) {
+                return true;
+            }
         }
 
         // Some responses return result=true / responseCode=0

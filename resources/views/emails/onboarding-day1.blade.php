@@ -1,11 +1,11 @@
 @extends('emails.layout')
 
-@section('title', 'เริ่มต้นกับ BrieflyLearn')
+@section('title', 'เริ่มต้นกับ Antiparallel')
 
 @section('content')
     <h1>สวัสดี {{ $user->full_name }}! 👋</h1>
 
-    <p>ยินดีต้อนรับสู่ BrieflyLearn อีกครั้ง! เราดีใจที่คุณพร้อมจะเริ่มต้นการเรียนรู้แล้ว</p>
+    <p>ยินดีต้อนรับสู่ Antiparallel อีกครั้ง! เราดีใจที่คุณพร้อมจะเริ่มต้นการเรียนรู้แล้ว</p>
 
     <p>เพื่อให้คุณเริ่มต้นได้อย่างราบรื่น เรามี <strong>3 สิ่งที่คุณควรทำวันนี้</strong>:</p>
 
@@ -36,7 +36,7 @@
     </div>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/dashboard" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/dashboard" class="button">
             เริ่มต้นเลย
         </a>
     </div>
@@ -50,6 +50,6 @@
 
     <p style="margin-top: 30px;">
         หากมีคำถามหรือต้องการความช่วยเหลือ ติดต่อเราได้ทุกเมื่อ<br>
-        <strong>ทีมงาน BrieflyLearn</strong>
+        <strong>ทีมงาน Antiparallel</strong>
     </p>
 @endsection

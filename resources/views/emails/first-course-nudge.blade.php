@@ -18,7 +18,7 @@
         <p style="margin: 0 0 15px 0; color: #4b5563; font-size: 15px;">
             เรียนรู้พื้นฐาน AI และ Machine Learning ตั้งแต่เริ่มต้น เหมาะสำหรับผู้ที่ไม่มีพื้นฐาน
         </p>
-        <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/courses/ai-basics" style="color: #4a7a5a; text-decoration: none; font-weight: 600; font-size: 15px;">เริ่มเรียนเลย →</a>
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/courses/ai-basics" style="color: #00FFBA; text-decoration: none; font-weight: 600; font-size: 15px;">เริ่มเรียนเลย →</a>
     </div>
 
     <div style="border: 2px solid #e5e7eb; border-radius: 12px; padding: 20px; margin: 20px 0; background-color: #ffffff;">
@@ -30,7 +30,7 @@
         <p style="margin: 0 0 15px 0; color: #4b5563; font-size: 15px;">
             เรียนรู้เทคนิคการใช้ ChatGPT อย่างมืออาชีพ เขียน Prompt ที่ได้ผลลัพธ์ที่ต้องการ
         </p>
-        <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/courses/chatgpt-prompts" style="color: #4a7a5a; text-decoration: none; font-weight: 600; font-size: 15px;">เริ่มเรียนเลย →</a>
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/courses/chatgpt-prompts" style="color: #00FFBA; text-decoration: none; font-weight: 600; font-size: 15px;">เริ่มเรียนเลย →</a>
     </div>
 
     <div style="border: 2px solid #e5e7eb; border-radius: 12px; padding: 20px; margin: 20px 0; background-color: #ffffff;">
@@ -42,11 +42,11 @@
         <p style="margin: 0 0 15px 0; color: #4b5563; font-size: 15px;">
             สร้างงานศิลปะด้วย AI ใช้เครื่องมืออย่าง Midjourney, DALL-E และ Stable Diffusion
         </p>
-        <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/courses/ai-art" style="color: #4a7a5a; text-decoration: none; font-weight: 600; font-size: 15px;">เริ่มเรียนเลย →</a>
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/courses/ai-art" style="color: #00FFBA; text-decoration: none; font-weight: 600; font-size: 15px;">เริ่มเรียนเลย →</a>
     </div>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/courses" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/courses" class="button">
             ดูคอร์สทั้งหมด
         </a>
     </div>
@@ -60,6 +60,6 @@
 
     <p style="margin-top: 30px;">
         เริ่มต้นการเรียนรู้ของคุณวันนี้!<br>
-        <strong>ทีมงาน BrieflyLearn</strong>
+        <strong>ทีมงาน Antiparallel</strong>
     </p>
 @endsection

@@ -26,7 +26,7 @@ class WelcomeMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'ยินดีต้อนรับสู่ BrieflyLearn!',
+            subject: 'ยินดีต้อนรับสู่ Antiparallel!',
         );
     }
 

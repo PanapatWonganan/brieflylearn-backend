@@ -36,7 +36,7 @@
     </div>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/garden" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/garden" class="button">
             เข้าสู่ AI Lab
         </a>
     </div>
@@ -50,6 +50,6 @@
 
     <p style="margin-top: 30px;">
         มาเริ่มต้นสร้างสวนของคุณกันเลย!<br>
-        <strong>ทีมงาน BrieflyLearn</strong>
+        <strong>ทีมงาน Antiparallel</strong>
     </p>
 @endsection

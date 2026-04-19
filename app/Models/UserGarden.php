@@ -110,7 +110,7 @@ class UserGarden extends Model
         if ($newLevel > $oldLevel) {
             try {
                 $user = $this->user;
-                Mail::to($user->email)->send(new \App\Mail\LevelUpMail($user, $newLevel));
+                Mail::to($user->email)->queue(new \App\Mail\LevelUpMail($user, $newLevel));
             } catch (\Exception $e) {
                 Log::warning('Failed to send level up email', ['user_id' => $this->user_id, 'new_level' => $newLevel, 'error' => $e->getMessage()]);
             }

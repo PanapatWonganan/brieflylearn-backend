@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'BrieflyLearn')</title>
+    <title>@yield('title', 'Antiparallel')</title>
     <style>
         /* Reset styles */
         body, table, td, a {
@@ -28,22 +28,24 @@
             margin: 0;
             padding: 0;
             width: 100% !important;
-            background-color: #fdfcfa;
+            background-color: #0E0E0E;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+            color: #F2F2F0;
         }
 
         /* Container styles */
         .email-container {
             max-width: 600px;
             margin: 0 auto;
-            background-color: #ffffff;
+            background-color: #141414;
         }
 
         /* Header styles */
         .email-header {
-            background: linear-gradient(135deg, #4a7a5a 0%, #5a8a6a 100%);
+            background: #0E0E0E;
             padding: 40px 30px;
             text-align: center;
+            border-bottom: 1px solid rgba(0, 255, 186, 0.12);
         }
 
         .logo {
@@ -56,34 +58,34 @@
 
         .tagline {
             font-size: 14px;
-            color: rgba(255, 255, 255, 0.9);
+            color: rgba(255, 255, 255, 0.5);
             margin: 8px 0 0 0;
         }
 
         /* Content styles */
         .email-content {
             padding: 40px 30px;
-            color: #374151;
+            color: #F2F2F0;
             line-height: 1.6;
         }
 
         h1 {
             font-size: 24px;
             font-weight: 600;
-            color: #1f2937;
+            color: #F2F2F0;
             margin: 0 0 20px 0;
         }
 
         h2 {
             font-size: 20px;
             font-weight: 600;
-            color: #1f2937;
+            color: #F2F2F0;
             margin: 30px 0 15px 0;
         }
 
         p {
             margin: 0 0 16px 0;
-            color: #4b5563;
+            color: rgba(255, 255, 255, 0.7);
             font-size: 16px;
         }
 
@@ -91,10 +93,10 @@
         .button {
             display: inline-block;
             padding: 14px 32px;
-            background-color: #4a7a5a;
-            color: #ffffff !important;
+            background-color: #00FFBA;
+            color: #0E0E0E !important;
             text-decoration: none;
-            border-radius: 8px;
+            border-radius: 2px;
             font-weight: 600;
             font-size: 16px;
             margin: 10px 0 20px 0;
@@ -102,7 +104,7 @@
         }
 
         .button:hover {
-            background-color: #3d6a4a;
+            background-color: #00C98F;
         }
 
         .button-container {
@@ -112,16 +114,16 @@
 
         /* Info box styles */
         .info-box {
-            background-color: #f9fafb;
-            border-left: 4px solid #4a7a5a;
+            background-color: #1A1A1A;
+            border-left: 4px solid #00FFBA;
             padding: 16px 20px;
             margin: 20px 0;
-            border-radius: 4px;
+            border-radius: 2px;
         }
 
         .info-box p {
             margin: 0;
-            color: #4b5563;
+            color: rgba(255, 255, 255, 0.7);
         }
 
         /* Achievement badge styles */
@@ -153,20 +155,20 @@
 
         /* Footer styles */
         .email-footer {
-            background-color: #f9fafb;
+            background-color: #0E0E0E;
             padding: 30px;
             text-align: center;
-            border-top: 1px solid #e5e7eb;
+            border-top: 1px solid rgba(0, 255, 186, 0.08);
         }
 
         .email-footer p {
             margin: 8px 0;
             font-size: 14px;
-            color: #6b7280;
+            color: rgba(255, 255, 255, 0.4);
         }
 
         .email-footer a {
-            color: #4a7a5a;
+            color: #00FFBA;
             text-decoration: none;
         }
 
@@ -188,7 +190,7 @@
         /* Divider */
         .divider {
             height: 1px;
-            background-color: #e5e7eb;
+            background-color: rgba(0, 255, 186, 0.08);
             margin: 30px 0;
         }
 
@@ -200,7 +202,7 @@
 
         li {
             margin: 8px 0;
-            color: #4b5563;
+            color: rgba(255, 255, 255, 0.7);
         }
 
         /* Mobile responsive */
@@ -234,15 +236,15 @@
     </style>
 </head>
 <body>
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #fdfcfa;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #0E0E0E;">
         <tr>
             <td align="center" style="padding: 20px 0;">
                 <table class="email-container" role="presentation" cellspacing="0" cellpadding="0" border="0">
                     <!-- Header -->
                     <tr>
                         <td class="email-header">
-                            <h1 class="logo">BrieflyLearn</h1>
-                            <p class="tagline">เรียนรู้อย่างสั้น แต่ได้ผลจริง</p>
+                            <h1 class="logo">Antiparallel</h1>
+                            <p class="tagline">Learn smarter. Apply faster.</p>
                         </td>
                     </tr>
 
@@ -256,23 +258,23 @@
                     <!-- Footer -->
                     <tr>
                         <td class="email-footer">
-                            <p style="font-weight: 600; color: #374151;">BrieflyLearn</p>
+                            <p style="font-weight: 600; color: #ffffff;">Antiparallel</p>
                             <p>แพลตฟอร์มเรียนรู้ออนไลน์ที่ช่วยให้คุณพัฒนาทักษะได้อย่างมีประสิทธิภาพ</p>
 
                             <div class="divider"></div>
 
                             <p style="font-size: 13px;">
                                 หากคุณมีคำถามหรือต้องการความช่วยเหลือ<br>
-                                ติดต่อเราได้ที่ <a href="mailto:support@brieflylearn.com">support@brieflylearn.com</a>
+                                ติดต่อเราได้ที่ <a href="mailto:panapat.w@apppresso.com">panapat.w@apppresso.com</a>
                             </p>
 
-                            <p style="font-size: 12px; color: #9ca3af; margin-top: 20px;">
+                            <p style="font-size: 12px; color: rgba(255, 255, 255, 0.3); margin-top: 20px;">
                                 อีเมลนี้ถูกส่งถึง {{ $user->email ?? 'คุณ' }}<br>
                                 หากคุณไม่ต้องการรับอีเมลจากเรา <a href="#">ยกเลิกการรับอีเมล</a>
                             </p>
 
-                            <p style="font-size: 12px; color: #9ca3af;">
-                                &copy; {{ date('Y') }} BrieflyLearn. สงวนลิขสิทธิ์
+                            <p style="font-size: 12px; color: rgba(255, 255, 255, 0.3);">
+                                &copy; {{ date('Y') }} Antiparallel. สงวนลิขสิทธิ์
                             </p>
                         </td>
                     </tr>

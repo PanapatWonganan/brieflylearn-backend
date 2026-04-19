@@ -26,7 +26,7 @@ class OnboardingDay1Mail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'เริ่มต้นการเรียนรู้กับ BrieflyLearn',
+            subject: 'เริ่มต้นการเรียนรู้กับ Antiparallel',
         );
     }
 

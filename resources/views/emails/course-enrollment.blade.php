@@ -48,7 +48,7 @@
     </table>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://brieflylearn.com') }}/courses/{{ $course->id }}" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/courses/{{ $course->id }}" class="button">
             เข้าเรียนคอร์ส
         </a>
     </div>
@@ -65,6 +65,6 @@
 
     <p style="margin-top: 30px;">
         ขอให้เรียนรู้อย่างมีความสุขและประสบความสำเร็จในคอร์สนี้!<br>
-        <strong>ทีมงาน BrieflyLearn</strong>
+        <strong>ทีมงาน Antiparallel</strong>
     </p>
 @endsection
