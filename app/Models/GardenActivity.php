@@ -20,12 +20,10 @@ class GardenActivity extends Model
         'xp_earned',
         'star_seeds_earned',
         'activity_data',
-        'metadata'
     ];
 
     protected $casts = [
         'activity_data' => 'array',
-        'metadata' => 'array',
     ];
 
     // ความสัมพันธ์กับ User
@@ -80,19 +78,18 @@ class GardenActivity extends Model
     // ข้อความอธิบายกิจกรรม
     public function getDescriptionAttribute(): string
     {
-        $data = $this->activity_data;
-        $metadata = $this->metadata ?? [];
-        
+        $data = $this->activity_data ?? [];
+
         return match($this->activity_type) {
-            'water' => $this->target_type === 'plant' 
-                ? "รดน้ำพืช {$data['plant_name']}" 
+            'water' => $this->target_type === 'plant'
+                ? "รดน้ำพืช " . ($data['plant_name'] ?? '')
                 : "รดน้ำสวน",
-            'plant' => "ปลูก {$data['plant_name']}",
-            'harvest' => "เก็บเกี่ยว {$data['plant_name']}",
-            'grow' => "พืช {$data['plant_name']} เติบโตเป็น {$data['stage_name']}",
-            'fertilize' => "ใส่ปุ่ยให้ {$data['plant_name']}",
-            'lesson_completed' => "เรียนจบ: {$metadata['lesson_title']}",
-            'course_completed' => "จบคอร์ส: {$metadata['course_title']}",
+            'plant' => "ปลูก " . ($data['plant_name'] ?? ''),
+            'harvest' => "เก็บเกี่ยว " . ($data['plant_name'] ?? ''),
+            'grow' => "พืช " . ($data['plant_name'] ?? '') . " เติบโตเป็น " . ($data['stage_name'] ?? ''),
+            'fertilize' => "ใส่ปุ่ยให้ " . ($data['plant_name'] ?? ''),
+            'lesson_completed' => "เรียนจบ: " . ($data['lesson_title'] ?? ''),
+            'course_completed' => "จบคอร์ส: " . ($data['course_title'] ?? ''),
             default => "กิจกรรมในสวน"
         };
     }

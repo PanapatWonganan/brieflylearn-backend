@@ -51,7 +51,7 @@ class CourseProgressService
                 'target_id' => $lesson->id,
                 'xp_earned' => $baseXp,
                 'star_seeds_earned' => $starSeeds,
-                'metadata' => [
+                'activity_data' => [
                     'lesson_title' => $lesson->title,
                     'course_title' => $lesson->course->title,
                     'duration_minutes' => $lesson->duration_minutes
@@ -123,7 +123,7 @@ class CourseProgressService
                 'target_id' => $course->id,
                 'xp_earned' => $bonusXp,
                 'star_seeds_earned' => $bonusStarSeeds,
-                'metadata' => [
+                'activity_data' => [
                     'course_title' => $course->title,
                     'total_lessons' => $course->total_lessons,
                     'duration_weeks' => $course->duration_weeks
