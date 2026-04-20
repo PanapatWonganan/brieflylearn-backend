@@ -68,7 +68,7 @@ class MetaConversionsService
         }
 
         $requestBody = [
-            'data' => [json_encode([$eventPayload])],
+            'data' => [$eventPayload],
             'access_token' => $this->accessToken,
         ];
 
