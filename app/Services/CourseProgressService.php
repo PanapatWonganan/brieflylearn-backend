@@ -31,7 +31,7 @@ class CourseProgressService
             DB::beginTransaction();
 
             // Get or create user's garden
-            $garden = UserGarden::getOrCreateGarden($user);
+            $garden = $user->getOrCreateGarden();
 
             // Calculate XP based on lesson duration and category
             $baseXp = $this->calculateLessonXp($lesson);
@@ -103,7 +103,7 @@ class CourseProgressService
             DB::beginTransaction();
 
             // Get user's garden
-            $garden = UserGarden::getOrCreateGarden($user);
+            $garden = $user->getOrCreateGarden();
 
             // Calculate course completion bonus
             $bonusXp = $this->calculateCourseCompletionBonus($course);
@@ -287,7 +287,7 @@ class CourseProgressService
                         ]);
 
                         // Award achievement rewards to garden
-                        $garden = UserGarden::getOrCreateGarden($user);
+                        $garden = $user->getOrCreateGarden();
                         $garden->addXp($achievement->xp_reward);
                         $garden->star_seeds += $achievement->star_seeds_reward;
                         $garden->save();
@@ -361,7 +361,7 @@ class CourseProgressService
                             ]);
 
                             // Award achievement rewards to garden
-                            $garden = UserGarden::getOrCreateGarden($user);
+                            $garden = $user->getOrCreateGarden();
                             $garden->addXp($achievement->xp_reward);
                             $garden->star_seeds += $achievement->star_seeds_reward;
                             $garden->save();
