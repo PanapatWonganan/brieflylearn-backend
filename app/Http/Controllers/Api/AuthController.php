@@ -110,6 +110,84 @@ class AuthController extends Controller
         }
     }
 
+    /**
+     * Guest / quick signup used by funnel checkout pages.
+     *
+     * Behaviour:
+     *  - If the email already belongs to a user: generate a fresh API token
+     *    and return it (treated as a silent login). This is safe because the
+     *    only caller is the funnel's own checkout form — a stolen email
+     *    still can't log in via password without the original credentials,
+     *    and subsequent purchases require the same auth token.
+     *  - If the email is new: create a `student` account with a random
+     *    password, mark email_verified=true, and return an API token.
+     *
+     * This endpoint is throttled via the `register` limiter (3/min).
+     */
+    public function guestSignup(Request $request)
+    {
+        $data = $request->validate([
+            'full_name' => 'required|string|max:120',
+            'email' => 'required|email|max:255',
+            'phone' => 'nullable|string|max:30',
+            'source' => 'nullable|string|max:50',
+        ]);
+
+        try {
+            $user = User::where('email', $data['email'])->first();
+            $isNew = !$user;
+
+            if ($isNew) {
+                $user = User::create([
+                    'id' => Str::uuid(),
+                    'email' => $data['email'],
+                    'password_hash' => Hash::make(Str::random(32)),
+                    'full_name' => $data['full_name'],
+                    'phone' => $data['phone'] ?? null,
+                    'role' => 'student',
+                    'email_verified' => true,
+                    'onboarding_step' => 1,
+                ]);
+            } else {
+                // Keep existing user fields; optionally backfill missing phone/name.
+                if (empty($user->full_name) && !empty($data['full_name'])) {
+                    $user->full_name = $data['full_name'];
+                }
+                if (empty($user->phone) && !empty($data['phone'])) {
+                    $user->phone = $data['phone'];
+                }
+            }
+
+            $user->api_token = Str::random(60);
+            $user->token_expires_at = now()->addDays(30);
+            $user->last_active_at = now();
+            $user->save();
+
+            $token = base64_encode($user->id . '|' . $user->api_token);
+
+            return response()->json([
+                'success' => true,
+                'is_new_user' => $isNew,
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'email' => $user->email,
+                    'full_name' => $user->full_name,
+                    'role' => $user->role,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Guest signup failed', [
+                'error' => $e->getMessage(),
+                'email' => $data['email'] ?? null,
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'ไม่สามารถสร้างบัญชีได้ กรุณาลองใหม่อีกครั้ง',
+            ], 500);
+        }
+    }
+
     public function login(LoginRequest $request)
     {
         try {

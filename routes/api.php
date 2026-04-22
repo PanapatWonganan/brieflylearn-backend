@@ -41,6 +41,7 @@ Route::prefix('v1/auth')->group(function () {
     // Public routes (no auth required)
     Route::post('/login', [App\Http\Controllers\Api\AuthController::class, 'login'])->middleware('throttle:login');
     Route::post('/register', [App\Http\Controllers\Api\AuthController::class, 'register'])->middleware('throttle:register');
+    Route::post('/guest-signup', [App\Http\Controllers\Api\AuthController::class, 'guestSignup'])->middleware('throttle:register');
     Route::post('/google-login', [App\Http\Controllers\Api\AuthController::class, 'googleLogin']);
 
     // Password reset routes (public)
