@@ -73,6 +73,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('/courses', [LessonController::class, 'getCourses']);
     Route::get('/courses/{courseId}/lessons', [LessonController::class, 'getCourseLessons']);
     Route::get('/lessons/{lessonId}', [LessonController::class, 'show']);
+
+    // Playbook routes (public — show endpoint honors optional Bearer token for gated content)
+    Route::get('/playbooks', [\App\Http\Controllers\Api\PlaybookController::class, 'index']);
+    Route::get('/playbooks/{id}', [\App\Http\Controllers\Api\PlaybookController::class, 'show']);
 });
 
 // Protected API routes (require authentication)
@@ -91,6 +95,9 @@ Route::prefix('v1')->middleware(['auth.api', 'throttle:api'])->group(function ()
     // Enrollment routes
     Route::get('/enrollments/my', [EnrollmentController::class, 'getMyEnrollments']);
     Route::post('/enrollments', [EnrollmentController::class, 'enrollInCourse']);
+
+    // My playbooks (paid playbooks owned by the caller)
+    Route::get('/playbooks/my', [\App\Http\Controllers\Api\PlaybookController::class, 'myPlaybooks']);
 
     // Progress tracking routes
     Route::get('/progress/my-summary', [ProgressController::class, 'getMySummary']);

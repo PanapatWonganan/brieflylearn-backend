@@ -15,6 +15,8 @@ class Lesson extends Model
         'title',
         'description',
         'video_url',
+        'html_file_path',
+        'html_content',
         'duration_minutes',
         'order_index',
         'is_free',

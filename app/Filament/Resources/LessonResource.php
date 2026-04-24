@@ -37,6 +37,7 @@ class LessonResource extends Resource
                             ->searchable()
                             ->preload()
                             ->required()
+                            ->live()
                             ->createOptionForm([
                                 Forms\Components\TextInput::make('title')
                                     ->required()
@@ -77,7 +78,47 @@ class LessonResource extends Resource
                             ->helperText('Allow users to preview this lesson for free'),
                     ])->columns(2),
                     
+                Forms\Components\Section::make('Playbook Content')
+                    ->description('อัพโหลดไฟล์ HTML สำหรับ playbook (จะถูก sanitize ก่อนแสดงผล)')
+                    ->schema([
+                        Forms\Components\FileUpload::make('html_upload')
+                            ->label('Upload HTML File')
+                            ->disk('local')
+                            ->directory('playbooks')
+                            ->visibility('private')
+                            ->acceptedFileTypes(['text/html'])
+                            ->maxSize(5120) // 5MB
+                            ->preserveFilenames()
+                            ->helperText('อัพโหลดไฟล์ .html สูงสุด 5MB')
+                            ->dehydrated(false)
+                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                if (! $state) {
+                                    return;
+                                }
+                                // $state อาจเป็น TemporaryUploadedFile หรือ string path
+                                $path = is_object($state) && method_exists($state, 'getRealPath')
+                                    ? $state->getRealPath()
+                                    : null;
+                                if ($path && file_exists($path)) {
+                                    $html = file_get_contents($path);
+                                    $set('html_content', $html);
+                                }
+                            }),
+                        Forms\Components\Textarea::make('html_content')
+                            ->label('HTML Content (แก้ไขได้ถ้าต้องการ)')
+                            ->rows(15)
+                            ->columnSpanFull()
+                            ->helperText('เนื้อหา HTML ที่จะถูกแสดงในหน้า playbook — จะถูก sanitize ด้วย DOMPurify ฝั่ง frontend'),
+                        Forms\Components\TextInput::make('html_file_path')
+                            ->label('HTML File Path (auto-filled)')
+                            ->disabled()
+                            ->dehydrated(),
+                    ])
+                    ->columns(1)
+                    ->visible(fn ($record, Forms\Get $get) => static::isPlaybookCourse($get('course_id'), $record)),
+
                 Forms\Components\Section::make('Video Content')
+                    ->visible(fn ($record, Forms\Get $get) => ! static::isPlaybookCourse($get('course_id'), $record))
                     ->schema([
                         Forms\Components\FileUpload::make('video_upload')
                             ->label('Upload Video')
@@ -92,13 +133,13 @@ class LessonResource extends Resource
                             ->helperText('Max file size: 500MB. Supported formats: MP4, MOV, AVI, WebM')
                             ->live()
                             ->dehydrated(false),
-                            
+
                         Forms\Components\TextInput::make('video_url')
                             ->label('External Video URL (Optional)')
                             ->url()
                             ->maxLength(500)
                             ->helperText('YouTube, Vimeo, or other video URL'),
-                            
+
                         Forms\Components\Placeholder::make('video_status')
                             ->label('Video Processing Status')
                             ->content(function ($record) {
@@ -403,5 +444,24 @@ class LessonResource extends Resource
             'create' => Pages\CreateLesson::route('/create'),
             'edit' => Pages\EditLesson::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Determine if the lesson belongs to a playbook-type course.
+     * Checks the selected course_id first (live form state), then falls back
+     * to the record's existing course relationship when editing.
+     */
+    protected static function isPlaybookCourse(?string $courseId, $record): bool
+    {
+        if ($courseId) {
+            $course = \App\Models\Course::find($courseId);
+            if ($course) {
+                return $course->content_type === 'playbook';
+            }
+        }
+        if ($record && $record->course) {
+            return $record->course->content_type === 'playbook';
+        }
+        return false;
     }
 }

@@ -55,6 +55,16 @@ class CourseResource extends Resource
                     ->searchable()
                     ->preload()
                     ->relationship('category', 'name'),
+                Forms\Components\Select::make('content_type')
+                    ->label('ประเภทเนื้อหา')
+                    ->required()
+                    ->options([
+                        'video' => 'Video Course (คอร์สวิดีโอ)',
+                        'playbook' => 'Playbook (เนื้อหาอ่าน HTML)',
+                    ])
+                    ->default('video')
+                    ->helperText('Video = มีบทเรียนหลายบท + วิดีโอ / Playbook = 1 บทเรียนเดียว เนื้อหาอ่าน HTML')
+                    ->live(),
                 Forms\Components\Select::make('level')
                     ->label('ระดับ')
                     ->required()
@@ -99,6 +109,18 @@ class CourseResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('title')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('content_type')
+                    ->label('ประเภท')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'playbook' => 'warning',
+                        default => 'info',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'playbook' => 'Playbook',
+                        'video' => 'Video',
+                        default => $state,
+                    }),
                 Tables\Columns\TextColumn::make('instructor_id')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('category_id')
