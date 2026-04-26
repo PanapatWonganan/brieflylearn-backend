@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Enrollment extends Model
 {
@@ -47,15 +49,29 @@ class Enrollment extends Model
     }
 
     /**
+     * Total amount of all attached order-bump items, in baht.
+     * Returns 0 when no items are loaded/attached.
+     */
+    public function getBumpsTotalAttribute(): float
+    {
+        return (float) $this->orderItems->sum('price_snapshot');
+    }
+
+    /**
      * Relationships
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function course()
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
+    }
+
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
     }
 }
