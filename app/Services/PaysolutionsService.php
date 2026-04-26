@@ -34,9 +34,15 @@ class PaysolutionsService
 
     /**
      * Build the data needed for the browser to POST to the hosted page.
+     *
+     * @param  Enrollment  $enrollment  Pending enrollment (already has order_no).
+     * @param  array<int, array{name: string, price: float}>  $bumpLineItems
+     *         Optional bump products to be summed into total + productdetail.
+     *         Snapshots only — pass already-resolved name + price.
+     *
      * Returns: [ 'url' => hosted_url, 'fields' => [...], 'order_no' => refno ]
      */
-    public function buildCheckout(Enrollment $enrollment): array
+    public function buildCheckout(Enrollment $enrollment, array $bumpLineItems = []): array
     {
         $course = $enrollment->course;
         $user = $enrollment->user;
@@ -49,13 +55,25 @@ class PaysolutionsService
         $apiBase = rtrim((string) config('app.url', 'https://api.brieflylearn.com'), '/');
         $returnUrl = $apiBase . '/api/v1/payments/paysolutions/return';
 
+        $coursePrice = (float) $course->price;
+        $bumpsTotal = 0.0;
+        $detailParts = [strip_tags((string) $course->title)];
+
+        foreach ($bumpLineItems as $item) {
+            $bumpsTotal += (float) ($item['price'] ?? 0);
+            $detailParts[] = '+ ' . strip_tags((string) ($item['name'] ?? ''));
+        }
+
+        $grandTotal = $coursePrice + $bumpsTotal;
+        $productDetail = mb_substr(implode(' ', $detailParts), 0, 200);
+
         $fields = [
             'refno' => $refno,
             'merchantid' => (string) config('paysolutions.merchant_id'),
             'customeremail' => (string) $user->email,
             // productdetail max 255, strip HTML, keep ASCII-ish for safety.
-            'productdetail' => mb_substr(strip_tags($course->title), 0, 200),
-            'total' => number_format((float) $course->price, 2, '.', ''),
+            'productdetail' => $productDetail,
+            'total' => number_format($grandTotal, 2, '.', ''),
             'cc' => (string) config('paysolutions.currency', '00'),
             'lang' => (string) config('paysolutions.lang', 'TH'),
             // Pay Solutions rejects strings matching internal merchant-ref patterns
@@ -68,6 +86,7 @@ class PaysolutionsService
             'url' => (string) config('paysolutions.hosted_url'),
             'fields' => $fields,
             'order_no' => $refno,
+            'grand_total' => $grandTotal,
         ];
     }
 

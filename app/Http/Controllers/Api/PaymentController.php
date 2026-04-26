@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Mail\PaymentFailedMail;
 use App\Mail\PaymentInitiatedMail;
 use App\Mail\PaymentSuccessMail;
+use App\Models\BumpProduct;
 use App\Models\Course;
 use App\Models\Enrollment;
+use App\Models\OrderItem;
+use App\Services\OrderItemFulfillmentService;
 use App\Services\PaysolutionsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,8 +29,10 @@ use Illuminate\Support\Facades\Mail;
  */
 class PaymentController extends Controller
 {
-    public function __construct(protected PaysolutionsService $pay)
-    {
+    public function __construct(
+        protected PaysolutionsService $pay,
+        protected OrderItemFulfillmentService $fulfillment,
+    ) {
     }
 
     /**
@@ -38,6 +43,8 @@ class PaymentController extends Controller
     {
         $validated = $request->validate([
             'course_id' => ['required', 'uuid', 'exists:courses,id'],
+            'bump_slugs' => ['sometimes', 'array', 'max:10'],
+            'bump_slugs.*' => ['string', 'max:80'],
         ]);
 
         $user = Auth::user() ?? $request->auth_user;
@@ -61,7 +68,20 @@ class PaymentController extends Controller
             ]);
         }
 
-        // Free course → auto-enroll, no gateway.
+        // Resolve requested bumps to live BumpProduct rows. Silently drop any
+        // slug that is unknown or inactive — never charge a stale slug.
+        $requestedSlugs = array_values(array_unique($validated['bump_slugs'] ?? []));
+        $bumps = collect();
+        if (! empty($requestedSlugs)) {
+            $bumps = BumpProduct::query()
+                ->active()
+                ->forCourse($course->id)
+                ->whereIn('slug', $requestedSlugs)
+                ->get();
+        }
+
+        // Free course → auto-enroll, no gateway. Bumps on a free course are not
+        // supported (no money flow to attach them to); ignore them here.
         if ((float) $course->price <= 0) {
             $enrollment = Enrollment::updateOrCreate(
                 ['user_id' => $user->id, 'course_id' => $course->id],
@@ -102,7 +122,31 @@ class PaymentController extends Controller
             $enrollment->save();
         }
 
-        $checkout = $this->pay->buildCheckout($enrollment);
+        // Snapshot bumps as OrderItems (idempotent: re-checkout replaces
+        // the not-yet-delivered items with the latest selection).
+        DB::transaction(function () use ($enrollment, $bumps) {
+            // Drop any prior undelivered items so the user can change their mind
+            // before paying. Delivered items stay (they're history).
+            OrderItem::where('enrollment_id', $enrollment->id)
+                ->whereNull('delivered_at')
+                ->delete();
+
+            foreach ($bumps as $bump) {
+                OrderItem::create([
+                    'enrollment_id' => $enrollment->id,
+                    'bump_product_id' => $bump->id,
+                    'name_snapshot' => $bump->name,
+                    'price_snapshot' => $bump->price,
+                ]);
+            }
+        });
+
+        $bumpLineItems = $bumps->map(fn (BumpProduct $b) => [
+            'name' => $b->name,
+            'price' => (float) $b->price,
+        ])->values()->all();
+
+        $checkout = $this->pay->buildCheckout($enrollment, $bumpLineItems);
 
         // Fire-and-forget "awaiting payment" email
         try {
@@ -116,6 +160,8 @@ class PaymentController extends Controller
             'order_no' => $checkout['order_no'],
             'url' => $checkout['url'],
             'fields' => $checkout['fields'],
+            'grand_total' => $checkout['grand_total'] ?? null,
+            'bumps' => $bumpLineItems,
         ]);
     }
 
@@ -212,7 +258,12 @@ class PaymentController extends Controller
      */
     protected function applyPaymentResult(string $orderNo, bool $isSuccess, array $payload): void
     {
-        DB::transaction(function () use ($orderNo, $isSuccess, $payload) {
+        // Track whether this call is the one that flips the enrollment to
+        // completed. If so, fulfil bumps AFTER the transaction commits
+        // (so OrderItems written in the same tx are visible to fulfillment).
+        $shouldFulfilEnrollmentId = null;
+
+        DB::transaction(function () use ($orderNo, $isSuccess, $payload, &$shouldFulfilEnrollmentId) {
             $enrollment = Enrollment::where('order_no', $orderNo)->lockForUpdate()->first();
             if (! $enrollment) {
                 Log::warning('Paysolutions: enrollment not found for order_no', ['order_no' => $orderNo]);
@@ -254,6 +305,7 @@ class PaymentController extends Controller
                     ?? $enrollment->course?->price
                     ?? 0);
                 $enrollment->enrolled_at = $enrollment->enrolled_at ?: now();
+                $shouldFulfilEnrollmentId = $enrollment->id;
             } else {
                 $enrollment->status = 'pending';
                 $enrollment->payment_status = 'failed';
@@ -278,5 +330,22 @@ class PaymentController extends Controller
                 ]);
             }
         });
+
+        // Bump fulfillment runs OUTSIDE the parent transaction so failures
+        // here never roll back the (already-confirmed) payment + enrollment.
+        if ($shouldFulfilEnrollmentId !== null) {
+            try {
+                $enrollment = Enrollment::find($shouldFulfilEnrollmentId);
+                if ($enrollment) {
+                    $this->fulfillment->fulfilForEnrollment($enrollment);
+                }
+            } catch (\Throwable $e) {
+                Log::error('Bump fulfillment dispatch failed', [
+                    'order_no' => $orderNo,
+                    'enrollment_id' => $shouldFulfilEnrollmentId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 }

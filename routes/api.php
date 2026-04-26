@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\CommunityGardenController;
 use App\Http\Controllers\Api\AdvancedPlantController;
 use App\Http\Controllers\Api\SeasonalEventController;
 use App\Http\Controllers\Api\EnrollmentController;
+use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProgressController;
 use App\Http\Controllers\Api\ExamController;
@@ -77,6 +78,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     // Playbook routes (public — show endpoint honors optional Bearer token for gated content)
     Route::get('/playbooks', [\App\Http\Controllers\Api\PlaybookController::class, 'index']);
     Route::get('/playbooks/{id}', [\App\Http\Controllers\Api\PlaybookController::class, 'show']);
+
+    // Order bumps for a given course (public — checkout pages need this before login)
+    Route::get('/courses/{courseId}/bumps', [\App\Http\Controllers\Api\BumpProductController::class, 'forCourse']);
 });
 
 // Protected API routes (require authentication)
@@ -98,6 +102,10 @@ Route::prefix('v1')->middleware(['auth.api', 'throttle:api'])->group(function ()
 
     // My playbooks (paid playbooks owned by the caller)
     Route::get('/playbooks/my', [\App\Http\Controllers\Api\PlaybookController::class, 'myPlaybooks']);
+
+    // Groups (coaching/community) — caller must be active member to see {slug}
+    Route::get('/groups/my', [GroupController::class, 'myGroups']);
+    Route::get('/groups/{slug}', [GroupController::class, 'show']);
 
     // Progress tracking routes
     Route::get('/progress/my-summary', [ProgressController::class, 'getMySummary']);
