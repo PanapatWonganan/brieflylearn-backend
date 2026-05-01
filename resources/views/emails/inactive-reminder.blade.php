@@ -20,7 +20,7 @@
         </div>
 
         <div class="button-container">
-            <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/dashboard" class="button">
+            <a href="{{ config('app.frontend_url', 'https://antiparallel.app') }}/dashboard" class="button">
                 กลับมาเรียนต่อ
             </a>
         </div>
@@ -48,7 +48,7 @@
         </div>
 
         <div class="button-container">
-            <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/whats-new" class="button">
+            <a href="{{ config('app.frontend_url', 'https://antiparallel.app') }}/whats-new" class="button">
                 ดูอะไรใหม่
             </a>
         </div>
@@ -81,7 +81,7 @@
         </div>
 
         <div class="button-container">
-            <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/comeback" class="button">
+            <a href="{{ config('app.frontend_url', 'https://antiparallel.app') }}/comeback" class="button">
                 กลับมาเริ่มใหม่
             </a>
         </div>

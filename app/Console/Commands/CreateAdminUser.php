@@ -28,7 +28,7 @@ class CreateAdminUser extends Command
      */
     public function handle()
     {
-        $email = $this->argument('email') ?? $this->ask('Enter admin email', 'admin@brieflylearn.com');
+        $email = $this->argument('email') ?? $this->ask('Enter admin email', 'admin@antiparallel.app');
         $password = $this->argument('password') ?? $this->secret('Enter admin password');
 
         if (!$password) {

@@ -98,7 +98,7 @@
     @endif
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/dashboard" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.app') }}/dashboard" class="button">
             ดูรางวัลทั้งหมด
         </a>
     </div>

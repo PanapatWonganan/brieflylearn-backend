@@ -40,12 +40,12 @@ return [
     // Set this in the Pay Solutions merchant portal.
     'return_url' => env(
         'PAYSOLUTIONS_RETURN_URL',
-        env('APP_URL', 'https://api.brieflylearn.com') . '/api/v1/payments/paysolutions/return'
+        env('APP_URL', 'https://api.antiparallel.app') . '/api/v1/payments/paysolutions/return'
     ),
 
     // Server-to-server postback (configured in Pay Solutions merchant portal).
     'postback_url' => env(
         'PAYSOLUTIONS_POSTBACK_URL',
-        env('APP_URL', 'https://api.brieflylearn.com') . '/api/v1/payments/paysolutions/postback'
+        env('APP_URL', 'https://api.antiparallel.app') . '/api/v1/payments/paysolutions/postback'
     ),
 ];

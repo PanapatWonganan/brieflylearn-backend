@@ -50,7 +50,7 @@ class PasswordResetController extends Controller
             ]);
 
             // Create reset URL with token
-            $frontendUrl = config('app.frontend_url', 'https://brieflylearn.com');
+            $frontendUrl = config('app.frontend_url', 'https://antiparallel.app');
             $resetUrl = $frontendUrl . '/reset-password?token=' . $token . '&email=' . urlencode($request->email);
 
             // Send email with try-catch to prevent failure from breaking the flow

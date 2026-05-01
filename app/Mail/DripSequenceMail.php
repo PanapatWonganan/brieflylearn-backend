@@ -52,7 +52,7 @@ class DripSequenceMail extends Mailable
                 $this->user->full_name ?? '',
                 $firstName,
                 $this->user->email ?? '',
-                config('app.frontend_url', 'https://antiparallel.co'),
+                config('app.frontend_url', 'https://antiparallel.app'),
             ],
             $text
         );

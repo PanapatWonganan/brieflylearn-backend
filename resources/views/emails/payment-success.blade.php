@@ -2,7 +2,7 @@
 
 @php
     $isPlaybook = ($course->content_type ?? 'video') === 'playbook';
-    $frontendUrl = config('app.frontend_url', 'https://antiparallel.co');
+    $frontendUrl = config('app.frontend_url', 'https://antiparallel.app');
     $contentUrl = $isPlaybook
         ? $frontendUrl . '/playbooks/' . $course->id
         : $frontendUrl . '/courses/' . $course->id;

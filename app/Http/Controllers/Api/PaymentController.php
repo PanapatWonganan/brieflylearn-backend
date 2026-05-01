@@ -99,7 +99,7 @@ class PaymentController extends Controller
                 'success' => true,
                 'free' => true,
                 'enrollment' => $enrollment,
-                'redirect_url' => config('app.frontend_url', 'https://brieflylearn.com')
+                'redirect_url' => config('app.frontend_url', 'https://antiparallel.app')
                     . '/courses/' . $course->id,
             ]);
         }
@@ -207,7 +207,7 @@ class PaymentController extends Controller
                 ?? $request->input('order_no')
                 ?? ''
         );
-        $frontend = rtrim((string) config('app.frontend_url', 'https://brieflylearn.com'), '/');
+        $frontend = rtrim((string) config('app.frontend_url', 'https://antiparallel.app'), '/');
 
         if ($orderNo === '') {
             return redirect($frontend . '/payments/failed?reason=missing_order');

@@ -55,7 +55,7 @@ class EmailSubscriptionController extends Controller
      */
     private function showUnsubscribePage(bool $success, string $message)
     {
-        $frontendUrl = config('app.frontend_url', 'https://brieflylearn.com');
+        $frontendUrl = config('app.frontend_url', 'https://antiparallel.app');
 
         return response()->view('emails.unsubscribe', [
             'success' => $success,

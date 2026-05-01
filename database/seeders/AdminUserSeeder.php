@@ -19,7 +19,7 @@ class AdminUserSeeder extends Seeder
         if (!$adminExists) {
             User::create([
                 'id' => (string) Str::uuid(),
-                'email' => 'admin@brieflylearn.com',
+                'email' => 'admin@antiparallel.app',
                 'password_hash' => bcrypt('admin123456'),
                 'full_name' => 'BrieflyLearn Administrator',
                 'role' => 'admin',
@@ -28,7 +28,7 @@ class AdminUserSeeder extends Seeder
             ]);
 
             $this->command->info('Admin user created successfully!');
-            $this->command->info('Email: admin@brieflylearn.com');
+            $this->command->info('Email: admin@antiparallel.app');
             $this->command->info('Password: admin123456');
         } else {
             $this->command->info('Admin user already exists!');

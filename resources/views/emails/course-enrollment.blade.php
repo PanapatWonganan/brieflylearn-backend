@@ -48,7 +48,7 @@
     </table>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/courses/{{ $course->id }}" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.app') }}/courses/{{ $course->id }}" class="button">
             เข้าเรียนคอร์ส
         </a>
     </div>

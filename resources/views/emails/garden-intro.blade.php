@@ -36,7 +36,7 @@
     </div>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/garden" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.app') }}/garden" class="button">
             เข้าสู่ AI Lab
         </a>
     </div>

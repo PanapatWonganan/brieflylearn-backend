@@ -19,7 +19,7 @@
     </div>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/courses/{{ $course->id }}/checkout" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.app') }}/courses/{{ $course->id }}/checkout" class="button">
             ลองชำระอีกครั้ง
         </a>
     </div>

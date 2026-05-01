@@ -52,7 +52,7 @@ class PaysolutionsService
         // Only override `returnurl` for browser redirect. Keep `postbackurl`
         // implicit so Paysolutions falls back to the merchant-dashboard default
         // (which is already proven to reach our /postback endpoint successfully).
-        $apiBase = rtrim((string) config('app.url', 'https://api.brieflylearn.com'), '/');
+        $apiBase = rtrim((string) config('app.url', 'https://api.antiparallel.app'), '/');
         $returnUrl = $apiBase . '/api/v1/payments/paysolutions/return';
 
         $coursePrice = (float) $course->price;

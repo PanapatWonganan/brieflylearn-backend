@@ -34,7 +34,7 @@
     </ul>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/courses/recommended" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.app') }}/courses/recommended" class="button">
             ดูคอร์สแนะนำ
         </a>
     </div>

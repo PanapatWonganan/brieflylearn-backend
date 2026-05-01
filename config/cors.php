@@ -23,8 +23,8 @@ return [
         'http://localhost:3000',
         'http://localhost:3001',
         'http://localhost:3002',
-        'https://brieflylearn.com',
-        'https://www.brieflylearn.com',
+        'https://antiparallel.app',
+        'https://www.antiparallel.app',
         'https://thanasinlms.vercel.app',
     ],
 

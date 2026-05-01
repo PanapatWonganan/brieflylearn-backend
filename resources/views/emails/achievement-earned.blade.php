@@ -51,7 +51,7 @@
     <p>รางวัลแต่ละอันแสดงถึงความก้าวหน้าและความมุ่งมั่นของคุณในการเรียนรู้ มันไม่ใช่แค่ตัวเลข แต่เป็นหลักฐานของการพัฒนาตนเองอย่างต่อเนื่อง</p>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/achievements" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.app') }}/achievements" class="button">
             ดูรางวัลทั้งหมด
         </a>
     </div>

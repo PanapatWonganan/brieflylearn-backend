@@ -36,7 +36,7 @@
     </div>
 
     <div class="button-container">
-        <a href="{{ config('app.frontend_url', 'https://antiparallel.co') }}/dashboard" class="button">
+        <a href="{{ config('app.frontend_url', 'https://antiparallel.app') }}/dashboard" class="button">
             เริ่มต้นเลย
         </a>
     </div>

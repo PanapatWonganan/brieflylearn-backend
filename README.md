@@ -179,12 +179,12 @@ cd /var/www/brieflylearn
 ### Access URL
 
 **Local**: http://localhost:8001/admin
-**Production**: https://admin.brieflylearn.com/admin
+**Production**: https://api.antiparallel.app/admin
 
 ### Default Credentials
 
 ```
-Email: admin@brieflylearn.com
+Email: admin@antiparallel.app
 Password: admin123
 ```
 
@@ -216,7 +216,7 @@ exit
 ### Base URL
 
 **Local**: http://localhost:8001/api/v1
-**Production**: https://api.brieflylearn.com/api/v1
+**Production**: https://api.antiparallel.app/api/v1
 
 ### Authentication
 
@@ -365,12 +365,12 @@ FRONTEND_URL=http://localhost:3000
 ```env
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://api.brieflylearn.com
+APP_URL=https://api.antiparallel.app
 DB_CONNECTION=mysql
 DB_DATABASE=brieflylearn_production
 DB_USERNAME=brieflylearn_user
 DB_PASSWORD=YOUR_SECURE_PASSWORD
-FRONTEND_URL=https://brieflylearn.com
+FRONTEND_URL=https://antiparallel.app
 SESSION_SECURE_COOKIE=true
 ```
 
@@ -394,7 +394,7 @@ This project is licensed under the MIT License.
 
 ## 📞 Support
 
-- **Email**: support@brieflylearn.com
+- **Email**: support@antiparallel.app
 - **Documentation**: [Full Documentation](../VULTR_DEPLOYMENT_GUIDE.md)
 
 ---
